@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+db_diag.txt
+db_keys.txt
+master_db_sample.json
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Large Models (Optional: keep if you want them in repo, or ignore to keep repo light)
+# models/*.pkl
+
+# Temp
+tmp/
+*.log
