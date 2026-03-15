@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, User, Bot, Upload, Paperclip, X, FileText, Activity, Terminal, MessageSquare, Shield } from 'lucide-react';
+import { Send, User, Bot, Upload, Paperclip, X, FileText, Activity, Terminal, MessageSquare, Shield, AlertTriangle, BookOpen, Search, Code } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -81,7 +81,7 @@ export const Chatbot = () => {
 
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!input.trim() || loading || !fileLoaded) return;
+        if (!input.trim() || loading) return;
 
         const userMsg = input.trim();
         setInput('');
@@ -107,7 +107,7 @@ export const Chatbot = () => {
     ];
 
     return (
-        <div className="pt-30 pb-20 px-4 max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fade-in">
+        <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto flex flex-col animate-fade-in">
             {/* Header */}
             <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-6">
@@ -131,7 +131,61 @@ export const Chatbot = () => {
                 </div>
             </div>
 
-            <div className="flex flex-1 gap-6 overflow-hidden">
+            {/* Educational Header & Disclaimer */}
+            <section className="space-y-6 bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden mb-10">
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                    <BookOpen className="w-64 h-64 text-primary-600" />
+                </div>
+
+                <div className="relative z-10 flex flex-col md:flex-row gap-12">
+                    <div className="flex-1 space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 text-primary-700 dark:text-primary-400">
+                            <BookOpen className="w-4 h-4" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">How to Use Insight TraQ</span>
+                        </div>
+
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none mb-2">
+                            Semantic RAG <span className="text-primary-600 italic">Analysis</span>
+                        </h2>
+
+                        <p className="text-gray-600 dark:text-gray-400 font-medium leading-relaxed max-w-2xl">
+                            Insight TraQ leverages Retrieval-Augmented Generation to securely audit complex financial documents.
+                            Select an existing DRHP filing or upload your own <strong>PDF</strong> document. Our AI reads the deeply embedded text to provide contextual answers.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+                            <div className="p-4 bg-gray-50 dark:bg-dark-bg/50 rounded-2xl border border-gray-100 dark:border-dark-border">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                    <Search className="w-4 h-4 text-primary-500" /> Deep Extraction
+                                </h3>
+                                <p className="text-xs text-gray-500">Ask the bot to summarize risk factors, tabulate financials, or explain the core business model from hundreds of pages instantly.</p>
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-dark-bg/50 rounded-2xl border border-gray-100 dark:border-dark-border">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                    <Code className="w-4 h-4 text-purple-500" /> Contextual Logic
+                                </h3>
+                                <p className="text-xs text-gray-500">The AI does not access the internet; it roots every response strictly in the document you provide to prevent bias.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Disclaimer Alert */}
+                <div className="relative z-10 mt-6 p-5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 rounded-2xl flex items-start gap-4">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl shrink-0">
+                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-red-900 dark:text-red-300 uppercase tracking-wide text-sm mb-1">AI Hallucination & Risk Warning</h4>
+                        <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed font-medium">
+                            Insight TraQ is an experimental Language Model tool. Like all generative AI, it is prone to <strong>hallucinations</strong> and may present factually incorrect or miscalculated financial figures with high confidence.
+                            Users must <strong>always</strong> independently verify raw data in the original document. We are not liable for any financial decisions made based on this tool.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <div className="flex gap-6 h-[600px] lg:h-[800px]">
                 {/* Left Sidebar: DRHP Filings */}
                 <div className="hidden lg:flex flex-col w-96 shrink-0 space-y-8">
                     <div className="flex-1 bg-white dark:bg-dark-card rounded-[3rem] border border-gray-100 dark:border-dark-border shadow-2xl p-8 flex flex-col overflow-hidden">
@@ -243,13 +297,13 @@ export const Chatbot = () => {
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder={fileLoaded ? "Audit this document... (e.g., Explain the financial risks)" : "Please upload or drop a DRHP file to begin analysis"}
-                                disabled={!fileLoaded || loading}
+                                placeholder="Audit this document... (e.g., Explain the financial risks)"
+                                disabled={loading}
                                 className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-[2.5rem] px-10 py-6 pr-24 focus:ring-[12px] focus:ring-primary-500/10 transition-all outline-none dark:text-white font-black text-lg shadow-2xl disabled:opacity-50"
                             />
                             <button
                                 type="submit"
-                                disabled={!input.trim() || loading || !fileLoaded}
+                                disabled={!input.trim() || loading}
                                 className="absolute right-3.5 top-3.5 bottom-3.5 px-8 bg-primary-600 text-white rounded-[1.75rem] hover:bg-primary-700 transition-all disabled:opacity-50 flex items-center justify-center shadow-lg transform active:scale-90"
                             >
                                 <Send className="w-6 h-6" />

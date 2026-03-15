@@ -1,54 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useTheme } from './hooks/useTheme';
 import { Navbar } from './components/Navbar';
+import { TickerTape } from './components/TickerTape';
 import { Footer } from './components/Footer';
 import { Home } from './pages/Home';
 import { Analysis } from './pages/Analysis';
 import { Listings } from './pages/Listings';
 import { Chatbot } from './pages/Chatbot';
 import { Roadmap } from './pages/Roadmap';
+import { IpoModel } from './pages/IpoModel';
 
 function App() {
   const { theme, toggleTheme } = useTheme();
-  const [activeView, setView] = useState('home');
-  const [analysisParams, setAnalysisParams] = useState(null);
+  const location = useLocation();
 
   // Scroll to top when view changes
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [activeView]);
-
-  const renderView = () => {
-    switch (activeView) {
-      case 'home':
-        return <Home setView={setView} />;
-      case 'analysis':
-        return <Analysis initialParams={analysisParams} />;
-      case 'explore':
-        return <Listings setView={setView} setParams={setAnalysisParams} />;
-      case 'chatbot':
-        return <Chatbot />;
-      case 'roadmap':
-        return <Roadmap />;
-      default:
-        return <Home setView={setView} />;
-    }
-  };
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <Navbar
-        activeView={activeView}
-        setView={setView}
         toggleTheme={toggleTheme}
         theme={theme}
       />
+      <div className="pt-[72px]"> {/* Add padding to prevent overlap with fixed navbar */}
+        <TickerTape />
+      </div>
 
       <main>
-        {renderView()}
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/analysis" element={<Analysis />} />
+          <Route path="/ipo" element={<Listings />} />
+          <Route path="/ipo-model" element={<IpoModel />} />
+          <Route path="/insight" element={<Chatbot />} />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
       </main>
 
-      <Footer setView={setView} />
+      <Footer />
     </div>
   );
 }

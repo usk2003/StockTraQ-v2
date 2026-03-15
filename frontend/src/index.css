@@ -66,3 +66,34 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-gray-200 dark:bg-dark-border rounded-full hover:bg-primary-500/50 transition-colors;
 }
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 80s linear infinite;
+  will-change: transform;
+}
+
+@keyframes drive {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 0 80px;
+  }
+}
+
+.road-stripes {
+  background-image: linear-gradient(to bottom, transparent 50%, #facc15 50%);
+  background-size: 100% 80px;
+  animation: drive 2s linear infinite;
+}

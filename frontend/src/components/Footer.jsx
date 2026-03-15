@@ -1,7 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { TrendingUp, Twitter, Linkedin, Github, Instagram, Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
 
-export const Footer = ({ setView }) => {
+export const Footer = () => {
     return (
         <footer className="bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 py-10 px-4 border-t border-gray-100 dark:border-dark-border">
             <div className="max-w-7xl mx-auto">
@@ -40,18 +41,18 @@ export const Footer = ({ setView }) => {
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Navigation</h3>
                         <ul className="space-y-4">
                             {[
-                                { name: 'Market Home', view: 'home' },
-                                { name: 'IPO TraQ', view: 'explore' },
-                                { name: 'Insight TraQ', view: 'chatbot' },
+                                { name: 'Market Home', path: '/' },
+                                { name: 'IPO TraQ', path: '/ipo' },
+                                { name: 'Insight TraQ', path: '/insight' },
                             ].map((item) => (
-                                <li key={item.view}>
-                                    <button
-                                        onClick={() => setView(item.view)}
+                                <li key={item.path}>
+                                    <Link
+                                        to={item.path}
                                         className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1 group"
                                     >
                                         {item.name}
                                         <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
-                                    </button>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>

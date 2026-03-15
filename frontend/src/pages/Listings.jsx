@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRight, ExternalLink } from 'lucide-react';
+import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRight, ExternalLink, AlertTriangle, BookOpen, AlertCircle, MessageSquare, Bot } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -68,7 +69,8 @@ const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
     );
 };
 
-export const Listings = ({ setView, setParams }) => {
+export const Listings = () => {
+    const navigate = useNavigate();
     const [ongoing, setOngoing] = useState([]);
     const [closed, setClosed] = useState([]);
     const [bestListed, setBestListed] = useState([]);
@@ -116,20 +118,25 @@ export const Listings = ({ setView, setParams }) => {
             qib: parseFloat(details.qib) || 0,
             nii: parseFloat(details.nii) || 0,
             retail: parseFloat(details.retail) || 0,
-            total_sub: parseFloat(details.total) || 0,
+            total_sub: parseFloat(details.total_sub) || 0,
             issue_size: parseFloat(details.issue_size || ipo.issue_size || ipo.size_cr) || 0,
-            pe_ratio: parseFloat(details.pe) || 0,
+            pe_ratio: parseFloat(details.pe_ratio) || 0,
             revenue: parseFloat(details.revenue) || 0,
             pat: parseFloat(details.pat) || 0,
             roe: parseFloat(details.roe) || 0,
             roce: parseFloat(details.roce) || 0,
-            profit_margin: parseFloat(details.margin) || 0,
-            revenue_growth: parseFloat(details.growth) || 15.0,
+            profit_margin: parseFloat(details.profit_margin) || 0,
+            revenue_growth: parseFloat(details.revenue_growth) || 15.0,
             company_name: ipo.name,
-            actual_gain: ipo.gain
+            symbol: ipo.symbol,
+            bse_code: ipo.bse_code,
+            opening_date: ipo.opening_date,
+            listing_date: ipo.listing_date,
+            actual_gain: ipo.gain,
+            actual_listing_price: ipo.actual_listing_price,
+            issue_price: ipo.price
         };
-        setParams(p);
-        setView('analysis');
+        navigate('/analysis', { state: { params: p } });
     };
 
     if (loading) return (
@@ -139,7 +146,111 @@ export const Listings = ({ setView, setParams }) => {
     );
 
     return (
-        <div className="py-24 px-4 max-w-7xl mx-auto space-y-20 animate-fade-in relative">
+        <div className="py-32 px-4 max-w-7xl mx-auto flex flex-col animate-fade-in relative">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-6">
+                    <div className="p-4 bg-primary-600 rounded-[2rem] shadow-xl shadow-primary-500/30">
+                        <MessageSquare className="w-10 h-10 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">IPO TraQ</h1>
+                        <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 opacity-70">AI-Powered IPO Analytics</p>
+                    </div>
+                </div>
+
+                <div className="hidden md:flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest leading-none">Market Sentiment</p>
+                        <p className="text-lg font-black text-green-500 uppercase mt-1">Bullish</p>
+                    </div>
+                    <div className="w-20 h-2 bg-gray-100 dark:bg-dark-border rounded-full overflow-hidden">
+                        <div className="w-4/5 h-full bg-green-500"></div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Educational Header & Disclaimer */}
+            <section className="space-y-6 bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden mb-10">
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                    <BookOpen className="w-64 h-64 text-primary-600" />
+                </div>
+
+                <div className="relative z-10 flex flex-col md:flex-row gap-12">
+                    <div className="flex-1 space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800/30 text-primary-700 dark:text-primary-400">
+                            <BookOpen className="w-4 h-4" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">How to Use IPO TraQ</span>
+                        </div>
+
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none mb-2">
+                            IPO Intelligency & <span className="text-primary-600 italic">Analytics</span>
+                        </h2>
+
+                        <p className="text-gray-600 dark:text-gray-400 font-medium leading-relaxed max-w-2xl">
+                            An Initial Public Offering (IPO) is when a private company first sells shares of stock to the public.
+                            Our predictive model uses deep historical data to simulate listing day performance. Click <strong>"Analyze Now"</strong> on any active or historical IPO to run a full AI audit.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+                            <div className="p-4 bg-gray-50 dark:bg-dark-bg/50 rounded-2xl border border-gray-100 dark:border-dark-border">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 text-green-500" /> Subscription Data
+                                </h3>
+                                <p className="text-xs text-gray-500">QIB (Qualified Institutions) and NII (Non-Institutional) oversubscriptions are heavy indicators of listing momentum.</p>
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-dark-bg/50 rounded-2xl border border-gray-100 dark:border-dark-border">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-primary-500" /> Valuation (PE)
+                                </h3>
+                                <p className="text-xs text-gray-500">Compare the Price-to-Earnings (PE) ratio with industry peers to see if the company is priced aggressively.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Disclaimer Alert */}
+                <div className="relative z-10 mt-6 p-5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 rounded-2xl flex items-start gap-4">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl shrink-0">
+                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-red-900 dark:text-red-300 uppercase tracking-wide text-sm mb-1">Strict Disclaimer</h4>
+                        <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed font-medium">
+                            StockTraQ is an experimental AI tool designed solely for educational and research purposes. We are <strong>NOT</strong> a SEBI Registered Financial Advisor.
+                            Any predictions or analytics regarding listing premiums or stock momentum are generated from historical algorithms and should <strong>never</strong> be taken as financial advice. Investments in securities markets are subject to severe market risks.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* AI Model Explanation Redirect Banner */}
+            <div
+                onClick={() => navigate('/ipo-model')}
+                className="mb-10 p-6 bg-green-600 rounded-[2rem] shadow-xl shadow-green-500/20 cursor-pointer overflow-hidden relative group transform transition-transform hover:scale-[1.01]"
+            >
+                {/* Decorative Background Elements */}
+                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none transform group-hover:rotate-12 transition-transform duration-500">
+                    <Activity className="w-32 h-32 text-white" />
+                </div>
+
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/20 shrink-0">
+                            <Bot className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-1">Curious how our AI predicts listings?</h3>
+                            <p className="text-green-100 font-medium">Explore the machine learning pipeline, algorithms, and parameters driving IPO TraQ.</p>
+                        </div>
+                    </div>
+
+                    <button className="shrink-0 px-6 py-3 bg-white text-green-600 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2 group-hover:bg-green-50">
+                        View Model Specs <ArrowRight className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
 
             {/* Section 1: Ongoing */}
             <section className="space-y-8">

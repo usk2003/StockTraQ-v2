@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, Newspaper, Info } from 'lucide-react';
 
 const FeatureCard = ({ icon: Icon, title, description, color }) => (
@@ -24,7 +25,8 @@ const IndexCard = ({ name, value, change, isPositive }) => (
     </div>
 );
 
-export const Home = ({ setView }) => {
+export const Home = () => {
+    const navigate = useNavigate();
     const models = [
         { title: 'Listing Gain', desc: 'Predicts opening day returns based on subscription & GMP.', icon: Rocket, color: '#22c55e' },
         { title: 'Demand Tier', desc: 'Classifies market hype and subscription demand.', icon: Users, color: '#f59e0b' },
@@ -70,13 +72,13 @@ export const Home = ({ setView }) => {
 
                     <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
                         <button
-                            onClick={() => setView('analysis')}
+                            onClick={() => navigate('/analysis')}
                             className="bg-primary-600 hover:bg-primary-700 text-white px-10 py-5 rounded-full font-bold text-lg shadow-2xl shadow-primary-500/40 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
                         >
                             Start Analysis <ArrowRight className="w-5 h-5" />
                         </button>
                         <button
-                            onClick={() => setView('explore')}
+                            onClick={() => navigate('/ipo')}
                             className="px-10 py-5 rounded-full font-bold text-lg border-2 border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-card transition-all active:scale-95"
                         >
                             IPO TraQ
@@ -129,7 +131,7 @@ export const Home = ({ setView }) => {
                                 While Grey Market Premium (GMP) is a strong indicator, our AI emphasizes **Subscription Data** (QIB & NII) as a more reliable predictor of actual listing day momentum.
                             </p>
                             <button
-                                onClick={() => setView('chatbot')}
+                                onClick={() => navigate('/insight')}
                                 className="px-6 py-3 bg-white text-primary-600 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-all active:scale-95"
                             >
                                 Ask Insight TraQ
@@ -163,7 +165,7 @@ export const Home = ({ setView }) => {
                         <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">Stocks Analyzed</p>
                     </div>
                     <div className="space-y-2">
-                        <div className="text-6xl font-black text-primary-600 tracking-tighter">92%</div>
+                        <div className="text-6xl font-black text-primary-600 tracking-tighter">92.4%</div>
                         <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">Prediction Accuracy</p>
                     </div>
                     <div className="space-y-2">

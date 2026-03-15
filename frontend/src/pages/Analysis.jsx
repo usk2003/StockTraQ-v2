@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Activity, Rocket, TrendingUp, DollarSign, BarChart, CheckCircle, Info, HelpCircle, X } from 'lucide-react';
 
@@ -75,7 +76,10 @@ const MetricCard = ({ label, value, subtext, color, icon: Icon, progress }) => (
     </div>
 );
 
-export const Analysis = ({ initialParams }) => {
+export const Analysis = () => {
+    const location = useLocation();
+    const initialParams = location.state?.params;
+
     const [params, setParams] = useState({
         qib: 4.41, nii: 0.80, retail: 1.08, total_sub: 2.81,
         issue_size: 2833.9, pe_ratio: 65.5, revenue: 2816.0,
@@ -85,6 +89,7 @@ export const Analysis = ({ initialParams }) => {
 
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [companyName, setCompanyName] = useState('');
     const [actualGain, setActualGain] = useState(null);
@@ -100,13 +105,25 @@ export const Analysis = ({ initialParams }) => {
             // Auto-trigger analysis for the newly selected IPO
             const autoAnalyze = async () => {
                 setLoading(true);
+                setError(null);
                 try {
-                    // Strip non-numerical fields for API
-                    const { company_name, actual_gain, ...apiParams } = initialParams;
+                    const schemaFields = [
+                        'qib', 'nii', 'retail', 'total_sub', 'issue_size',
+                        'pe_ratio', 'revenue', 'pat', 'roe', 'roce',
+                        'profit_margin', 'revenue_growth'
+                    ];
+
+                    const apiParams = {};
+                    schemaFields.forEach(field => {
+                        apiParams[field] = parseFloat(initialParams[field]) || 0;
+                    });
+                    apiParams.actual_gain = initialParams.actual_gain ?? null;
+
                     const response = await axios.post(`${API_BASE}/analyze`, apiParams);
                     setResults(response.data);
-                } catch (error) {
-                    console.error('Auto-analysis failed', error);
+                } catch (err) {
+                    console.error('Auto-analysis failed', err);
+                    setError(err.response?.data?.detail || 'Analysis engine failed to respond. Please try clicking "Analyze Now" manually.');
                 }
                 setLoading(false);
             };
@@ -116,14 +133,25 @@ export const Analysis = ({ initialParams }) => {
 
     const handleAnalyze = async () => {
         setLoading(true);
+        setError(null);
         try {
-            // Strip non-numerical fields for API
-            const { company_name, actual_gain, ...apiParams } = params;
+            const schemaFields = [
+                'qib', 'nii', 'retail', 'total_sub', 'issue_size',
+                'pe_ratio', 'revenue', 'pat', 'roe', 'roce',
+                'profit_margin', 'revenue_growth'
+            ];
+
+            const apiParams = {};
+            schemaFields.forEach(field => {
+                apiParams[field] = parseFloat(params[field]) || 0;
+            });
+            apiParams.actual_gain = actualGain;
+
             const response = await axios.post(`${API_BASE}/analyze`, apiParams);
             setResults(response.data);
-        } catch (error) {
-            console.error('Analysis failed', error);
-            alert('Failed to run analysis. Make sure the backend is running.');
+        } catch (err) {
+            console.error('Analysis failed', err);
+            setError(err.response?.data?.detail || 'Handshake with AI engine failed. Check backend connection.');
         }
         setLoading(false);
     };
@@ -146,17 +174,60 @@ export const Analysis = ({ initialParams }) => {
                     <div className="p-4 bg-primary-600 rounded-[1.5rem] shadow-xl shadow-primary-500/20">
                         <Rocket className="w-10 h-10 text-white" />
                     </div>
-                    <div>
-                        <h1 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none">
-                            {companyName}
-                        </h1>
-                        <div className="flex items-center gap-2 mt-3">
-                            <span className="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                AI Auditing Active
-                            </span>
-                            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider italic opacity-70">
-                                Global Financial Intelligence Terminal
-                            </p>
+                    <div className="flex-1 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none mb-4">
+                                {companyName}
+                            </h1>
+
+                            <div className="flex flex-wrap items-center gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">NSE Symbol</span>
+                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.symbol || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col border-l border-gray-200 dark:border-dark-border pl-4">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">BSE Code</span>
+                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.bse_code || 'N/A'}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 border-l border-gray-200 dark:border-dark-border pl-6">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Opening Date</span>
+                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.opening_date || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col border-l border-gray-200 dark:border-dark-border pl-4">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Listing Date</span>
+                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.listing_date || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-end text-right min-w-[150px]">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Listing Audit Price</p>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-3xl md:text-4xl font-black text-primary-600">
+                                        ₹{params.issue_price || params.price}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Issue Price</span>
+                                </div>
+                                {results?.live_price && (
+                                    <div className="mt-4 flex flex-col items-end pt-4 border-t border-gray-100 dark:border-dark-border">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                                            <span className="text-2xl md:text-3xl font-black text-green-500 animate-pulse">
+                                                ₹{results.live_price.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            Live Price ({results.live_source})
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -222,178 +293,286 @@ export const Analysis = ({ initialParams }) => {
                 </div>
             </div>
 
-            {/* Results Section */}
-            <div className="w-full">
-                {!results ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-center p-12 bg-gray-50 dark:bg-dark-card/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-dark-border">
-                        <div className="p-4 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4 animate-bounce">
-                            <Info className="w-8 h-8 text-primary-600" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Ready for Analysis</h3>
-                        <p className="text-gray-600 dark:text-gray-400 max-w-xs">Click Analyze to see AI predictions based on these metrics.</p>
+            {error && (
+                <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-3xl flex items-center gap-4 text-red-600 dark:text-red-400 animate-shake">
+                    <Info className="w-6 h-6 shrink-0" />
+                    <div>
+                        <p className="font-bold text-sm">System Alert</p>
+                        <p className="text-xs opacity-80">{error}</p>
                     </div>
-                ) : (
-                    <div className="space-y-8 animate-fade-in">
-                        {/* Rating Hero Card */}
-                        <div
-                            className="relative overflow-hidden rounded-[3rem] p-12 text-white shadow-2xl transition-all duration-700 hover:scale-[1.01]"
-                            style={{ backgroundColor: results.rating_color }}
-                        >
-                            <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
-                                <Rocket className="w-80 h-80 rotate-12" />
+                </div>
+            )}
+
+            {loading && (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-12 bg-gray-50 dark:bg-dark-card/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-dark-border">
+                    <div className="p-4 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4 animate-spin">
+                        <Activity className="w-8 h-8 text-primary-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Analyzing Metrics...</h3>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-xs">Our AI ensemble is calculating the Unified TraQ Score.</p>
+                </div>
+            )}
+
+            {!results && !loading && (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-12 bg-gray-50 dark:bg-dark-card/30 rounded-3xl border-2 border-dashed border-gray-200 dark:border-dark-border">
+                    <div className="p-4 bg-primary-100 dark:bg-primary-900/30 rounded-full mb-4 animate-bounce">
+                        <Info className="w-8 h-8 text-primary-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Ready for Analysis</h3>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-xs">Click Analyze to see AI predictions based on these metrics.</p>
+                </div>
+            )}
+
+            {results && !loading && (
+                <div className="space-y-8 animate-fade-in">
+                    {/* Rating Hero Card */}
+                    <div
+                        className="relative overflow-hidden rounded-[3rem] p-12 text-white shadow-2xl transition-all duration-700 hover:scale-[1.01]"
+                        style={{ backgroundColor: results.rating_color }}
+                    >
+                        <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
+                            <Rocket className="w-80 h-80 rotate-12" />
+                        </div>
+
+                        <div className="relative z-10">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 mb-8">
+                                <CheckCircle className="w-4 h-4 text-white" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verified AI Audit Score</span>
+                            </div>
+
+                            <div className="flex flex-col lg:flex-row items-center lg:items-end justify-between gap-12">
+                                <div className="text-center lg:text-left">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-4 opacity-70">Unified TraQ Score (v2)</p>
+                                    <div className="flex items-baseline justify-center lg:justify-start">
+                                        <span className="text-[12rem] font-black leading-none tracking-tighter">{results.unified_score}</span>
+                                        <span className="text-4xl font-bold opacity-40 ml-4 mb-6">/10</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col items-center lg:items-end text-center lg:text-right max-w-xl">
+                                    <div className="px-12 py-5 bg-white text-gray-900 dark:bg-dark-card dark:text-white rounded-[2rem] text-4xl font-black mb-8 shadow-2xl uppercase tracking-tighter">
+                                        {results.rating_label}
+                                    </div>
+                                    <p className="text-xl font-bold leading-tight opacity-95">
+                                        {results.recommendation.split('.')[0]}.
+                                    </p>
+                                    <p className="text-sm font-medium opacity-70 mt-4 leading-relaxed line-clamp-2">
+                                        Our neural engine indicates a {results.rating_label.toLowerCase()} performance based on historical sector trends and current market sentiment.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Backtest Analysis Card - Only shown if actualGain exists */}
+                    {actualGain !== null && (
+                        <div className="bg-white dark:bg-dark-card rounded-[3rem] border-4 border-dashed border-primary-500/20 p-12 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform">
+                                <BarChart className="w-48 h-48" />
                             </div>
 
                             <div className="relative z-10">
-                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 mb-8">
-                                    <CheckCircle className="w-4 h-4 text-white" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verified AI Audit Score</span>
+                                <div className="flex items-center gap-3 mb-10">
+                                    <div className="p-3 bg-primary-600 rounded-2xl shadow-lg">
+                                        <Activity className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Backtest Performance</h2>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">AI Prediction Accuracy Audit</p>
+                                    </div>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row items-center lg:items-end justify-between gap-12">
-                                    <div className="text-center lg:text-left">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-4 opacity-70">Unified IPO Rating</p>
-                                        <div className="flex items-baseline justify-center lg:justify-start">
-                                            <span className="text-[12rem] font-black leading-none tracking-tighter">{results.unified_rating}</span>
-                                            <span className="text-4xl font-bold opacity-40 ml-4 mb-6">/10</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="p-8 bg-gray-50 dark:bg-dark-bg/50 rounded-[2rem] border border-gray-100 dark:border-dark-border group/card hover:border-primary-500/30 transition-colors">
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">TraQ AI Prediction</p>
+                                        <h3 className="text-5xl font-black text-primary-600">+{results.listing_gain.toFixed(2)}%</h3>
+                                        <div className="mt-6 flex items-center gap-2">
+                                            <div className="w-full h-1.5 bg-gray-200 dark:bg-dark-border rounded-full overflow-hidden">
+                                                <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(results.listing_gain, 100)}%` }}></div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col items-center lg:items-end text-center lg:text-right max-w-xl">
-                                        <div className="px-12 py-5 bg-white text-gray-900 dark:bg-dark-card dark:text-white rounded-[2rem] text-4xl font-black mb-8 shadow-2xl uppercase tracking-tighter">
-                                            {results.rating_label}
+                                    <div className="p-8 bg-primary-600 rounded-[2rem] text-white shadow-2xl shadow-primary-500/20 group/card relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
+                                        <div className="relative z-10">
+                                            <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-80">Actual Listing Gain</p>
+                                            <h3 className="text-5xl font-black">+{actualGain}%</h3>
+                                            <div className="mt-6 flex items-center gap-2">
+                                                <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(actualGain, 100)}%` }}></div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p className="text-xl font-bold leading-tight opacity-95">
-                                            {results.recommendation.split('.')[0]}.
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 border-t border-gray-100 dark:border-dark-border pt-8">
+                                    <div className="p-8 bg-gray-50 dark:bg-dark-bg/50 rounded-[2rem] border border-gray-100 dark:border-dark-border group/card hover:border-primary-500/30 transition-colors">
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">TraQ Range Prediction</p>
+                                        <h3 className="text-4xl font-black text-primary-600">
+                                            ₹{(Number(params.issue_price || params.price || 0) * (1 + Number(results.range_min || 0) / 100)).toFixed(2)} -
+                                            ₹{(Number(params.issue_price || params.price || 0) * (1 + Number(results.range_max || 0) / 100)).toFixed(2)}
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-wide">
+                                            {results.listing_range} ({Number(results.range_min || 0).toFixed(1)}% to {Number(results.range_max || 0).toFixed(1)}%)
                                         </p>
-                                        <p className="text-sm font-medium opacity-70 mt-4 leading-relaxed line-clamp-2">
-                                            Our neural engine indicates a {results.rating_label.toLowerCase()} performance based on historical sector trends and current market sentiment.
+                                    </div>
+
+                                    <div className="p-8 bg-primary-600 rounded-[2rem] text-white shadow-2xl shadow-primary-500/20 group/card relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
+                                        <div className="relative z-10">
+                                            <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-80">Actual Listing Price</p>
+                                            <h3 className="text-4xl font-black">₹{params.actual_listing_price || 'N/A'}</h3>
+                                            <p className="text-[10px] font-bold opacity-70 mt-2 uppercase tracking-wide">Market Opening/Close Price</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-10 p-6 bg-primary-50 dark:bg-primary-900/10 rounded-2xl flex items-center justify-between border border-primary-100 dark:border-primary-900/20">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-primary-600 rounded-xl">
+                                            <TrendingUp className="w-4 h-4 text-white" />
+                                        </div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                            AI Variance: <span className="text-primary-600">{(actualGain - results.listing_gain).toFixed(2)}%</span>
                                         </p>
+                                    </div>
+                                    <div className="hidden sm:block text-[10px] font-black text-primary-600 uppercase tracking-widest">
+                                        High Precision Model
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* Backtest Analysis Card - Only shown if actualGain exists */}
-                        {actualGain !== null && (
-                            <div className="bg-white dark:bg-dark-card rounded-[3rem] border-4 border-dashed border-primary-500/20 p-12 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform">
-                                    <BarChart className="w-48 h-48" />
+                    {/* 1. Subscription Total Value - New Horizontal Card */}
+                    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-8 border border-gray-100 dark:border-dark-border shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-2 h-full" style={{ backgroundColor: results.sub_val_color }}></div>
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="flex items-center gap-6">
+                                <div className="p-4 rounded-2xl" style={{ backgroundColor: `${results.sub_val_color}15` }}>
+                                    <DollarSign className="w-8 h-8" style={{ color: results.sub_val_color }} />
                                 </div>
-
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-3 mb-10">
-                                        <div className="p-3 bg-primary-600 rounded-2xl shadow-lg">
-                                            <Activity className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Backtest Performance</h2>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">AI Prediction Accuracy Audit</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="p-8 bg-gray-50 dark:bg-dark-bg/50 rounded-[2rem] border border-gray-100 dark:border-dark-border group/card hover:border-primary-500/30 transition-colors">
-                                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">TraQ AI Prediction</p>
-                                            <h3 className="text-5xl font-black text-primary-600">+{results.listing_gain.toFixed(2)}%</h3>
-                                            <div className="mt-6 flex items-center gap-2">
-                                                <div className="w-full h-1.5 bg-gray-200 dark:bg-dark-border rounded-full overflow-hidden">
-                                                    <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(results.listing_gain, 100)}%` }}></div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-8 bg-primary-600 rounded-[2rem] text-white shadow-2xl shadow-primary-500/20 group/card relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
-                                            <div className="relative z-10">
-                                                <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-80">Actual Listing Gain</p>
-                                                <h3 className="text-5xl font-black">+{actualGain}%</h3>
-                                                <div className="mt-6 flex items-center gap-2">
-                                                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(actualGain, 100)}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-10 p-6 bg-primary-50 dark:bg-primary-900/10 rounded-2xl flex items-center justify-between border border-primary-100 dark:border-primary-900/20">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-2 bg-primary-600 rounded-xl">
-                                                <TrendingUp className="w-4 h-4 text-white" />
-                                            </div>
-                                            <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                                AI Variance: <span className="text-primary-600">{(actualGain - results.listing_gain).toFixed(2)}%</span>
-                                            </p>
-                                        </div>
-                                        <div className="hidden sm:block text-[10px] font-black text-primary-600 uppercase tracking-widest">
-                                            High Precision Model
-                                        </div>
-                                    </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Subscription Capital Audit</p>
+                                    <h3 className="text-3xl font-black text-gray-900 dark:text-white">₹{(results.sub_value_cr || 0).toLocaleString()} Cr</h3>
                                 </div>
                             </div>
-                        )}
+                            <div className="flex flex-col items-center md:items-end text-center md:text-right">
+                                <div className="px-6 py-2 rounded-full text-white text-sm font-black uppercase tracking-tighter mb-2" style={{ backgroundColor: results.sub_val_color }}>
+                                    {results.sub_val_label}
+                                </div>
+                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400">Total Capital Committed (Demand x Issue Size)</p>
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* Grid Metrics with rating-influenced styling */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <MetricCard
-                                label="Listing Gain"
-                                value={`${results.listing_gain.toFixed(2)}%`}
-                                subtext={results.gain_tag}
-                                color={results.gain_color}
-                                icon={Rocket}
-                                progress={Math.abs(results.listing_gain)}
-                            />
-                            <MetricCard
-                                label="Subscription Demand"
-                                value={`${params.total_sub.toFixed(1)}x`}
-                                subtext={`${results.demand_tier} Interest`}
-                                color={results.demand_color}
-                                icon={Activity}
-                                progress={params.total_sub}
-                            />
-                            <MetricCard
-                                label="Long-Term Gain"
-                                value={`${results.longterm_gain.toFixed(1)}%`}
-                                subtext="6-12 Month Projection"
-                                color="#10b981"
-                                icon={TrendingUp}
-                                progress={results.longterm_gain}
-                            />
-                            <MetricCard
-                                label="Financial Strength"
-                                value={`${results.financial_rating.toFixed(1)}/10`}
-                                subtext="Fundamental Analysis"
-                                color="#8b5cf6"
-                                icon={DollarSign}
-                                progress={results.financial_rating * 10}
-                            />
-                            <MetricCard
-                                label="Valuation PE"
-                                value={`${results.pe_score.toFixed(1)}/10`}
-                                subtext="Pricing Efficiency"
-                                color="#3b82f6"
-                                icon={BarChart}
-                                progress={results.pe_score * 10}
-                            />
-
-                            {/* AI Rationale Box */}
-                            <div className="lg:col-span-1 bg-white dark:bg-dark-card p-6 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm flex flex-col justify-center">
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 rounded-2xl" style={{ backgroundColor: getBgColor(results.rating_color) }}>
-                                        <CheckCircle className="w-6 h-6" style={{ color: results.rating_color }} />
+                    {/* 2. Side-by-Side Comparison Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Rating Comparison */}
+                        <div className="bg-white dark:bg-dark-card rounded-[2.5rem] p-8 border border-gray-100 dark:border-dark-border shadow-xl">
+                            <div className="flex items-center gap-3 mb-8">
+                                <Activity className="w-5 h-5 text-primary-600" />
+                                <h3 className="text-lg font-black dark:text-white uppercase tracking-tight">Listing Rating Audit</h3>
+                            </div>
+                            <div className="flex justify-between items-center gap-12">
+                                <div className="text-center flex-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">AI Predicted</p>
+                                    <div className="text-6xl font-black text-primary-600 leading-none mb-1">{results.listing_rating}</div>
+                                    <p className="text-[10px] font-bold text-gray-400">SCORE / 10</p>
+                                </div>
+                                <div className="h-16 w-px bg-gray-100 dark:bg-dark-border"></div>
+                                <div className="text-center flex-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Actual Listing</p>
+                                    <div className="text-6xl font-black text-gray-900 dark:text-white leading-none mb-1">
+                                        {results.actual_listing_rating ?? 'N/A'}
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 dark:text-white mb-1">AI Rationale</h4>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                                            {results.recommendation}
-                                        </p>
+                                    <p className="text-[10px] font-bold text-gray-400">SCORE / 10</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sentiment Comparison */}
+                        <div className="bg-white dark:bg-dark-card rounded-[2.5rem] p-8 border border-gray-100 dark:border-dark-border shadow-xl">
+                            <div className="flex items-center gap-3 mb-8">
+                                <CheckCircle className="w-5 h-5 text-primary-600" />
+                                <h3 className="text-lg font-black dark:text-white uppercase tracking-tight">Listing Sentiment Audit</h3>
+                            </div>
+                            <div className="flex justify-between items-center gap-12">
+                                <div className="text-center flex-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">AI Predicted</p>
+                                    <div className="px-4 py-2 rounded-xl bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-lg font-black uppercase tracking-tighter">
+                                        {results.listing_sentiment}
+                                    </div>
+                                </div>
+                                <div className="h-16 w-px bg-gray-100 dark:bg-dark-border"></div>
+                                <div className="text-center flex-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Actual Listing</p>
+                                    <div className={`px-4 py-2 rounded-xl bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white text-lg font-black uppercase tracking-tighter ${results.actual_listing_sentiment === results.listing_sentiment ? 'ring-2 ring-primary-500/50' : ''}`}>
+                                        {results.actual_listing_sentiment ?? 'N/A'}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
+
+                    {/* 3. Remaining Metrics in a 2-column grid for better vertical stacking */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-6">
+                            <MetricCard
+                                label="Listing Range"
+                                value={results.listing_range}
+                                subtext="Bracket Projection"
+                                color="#3b82f6"
+                                icon={Rocket}
+                                progress={50}
+                            />
+                            <MetricCard
+                                label="PE Audit"
+                                value={`${Number(results.pe_rating).toFixed(2)}/10`}
+                                subtext={`${params.pe_ratio.toFixed(2)} PE • ${params.pe_ratio < 30 ? "Good Valuation" : "Premium Pricing"}`}
+                                color="#3b82f6"
+                                icon={BarChart}
+                                progress={results.pe_rating * 10}
+                            />
+                        </div>
+                        <div className="space-y-6">
+                            <MetricCard
+                                label="Potential Ceiling"
+                                value={`${results.potential_gain.toFixed(1)}%`}
+                                subtext="52-Week High Outlook"
+                                color="#8b5cf6"
+                                icon={TrendingUp}
+                                progress={results.potential_gain}
+                            />
+                            <MetricCard
+                                label="Fundamental Rating"
+                                value={`${results.fundamental_rating.toFixed(1)}/10`}
+                                subtext="Standardized Health Score"
+                                color="#10b981"
+                                icon={CheckCircle}
+                                progress={results.fundamental_rating * 10}
+                            />
+                        </div>
+                    </div>
+
+                    {/* AI Rationale Box */}
+                    <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-sm">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 rounded-2xl" style={{ backgroundColor: `${results.rating_color}15` }}>
+                                <CheckCircle className="w-6 h-6" style={{ color: results.rating_color }} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-widest text-xs">AI Performance Rationale</h4>
+                                <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                                    {results.recommendation}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
