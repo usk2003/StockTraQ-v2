@@ -10,6 +10,18 @@ import { Listings } from './pages/Listings';
 import { Chatbot } from './pages/Chatbot';
 import { Roadmap } from './pages/Roadmap';
 import { IpoModel } from './pages/IpoModel';
+import { AdminLogin } from './pages/AdminLogin';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { Privacy } from './pages/Privacy';
+import { Terms } from './pages/Terms';
+import { Blogs } from './pages/Blogs';
+import { BlogDetail } from './pages/BlogDetail';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
+import { Profile } from './pages/Profile';
+
+
+
 
 function App() {
   const { theme, toggleTheme } = useTheme();
@@ -38,7 +50,19 @@ function App() {
           <Route path="/ipo-model" element={<IpoModel />} />
           <Route path="/insight" element={<Chatbot />} />
           <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/blogs" element={<Blogs />} />
+          <Route path="/blogs/:id" element={<BlogDetail />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/profile" element={<Profile />} />
+
           <Route path="*" element={<Home />} />
+
+
         </Routes>
       </main>
 

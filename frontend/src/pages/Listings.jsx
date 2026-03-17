@@ -6,21 +6,38 @@ import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRi
 const API_BASE = 'http://localhost:8000';
 
 const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
-    const gainColor = isClosed ? (ipo.gain > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+    // We map MongoDB schema to UI fallback to old Python format
+    const name = ipo.companyName || ipo.name;
+    const symbol = ipo.symbol;
+    const issueSize = ipo.issueSize || ipo.size_cr || ipo.issue_size;
+    const priceRange = ipo.priceBand || ipo.price_range || ipo.price;
+    const openDateStr = ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ipo.date;
+    const closeDateStr = ipo.closeDate ? new Date(ipo.closeDate).toLocaleDateString() : ipo.listing_date;
+    
+    // For Python backend fallback
+    const gain = ipo.gain || 0;
+    const gainColor = isClosed ? (gain > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+    
+    // Fallback details if coming from our node api
+    const details = ipo.details || {
+        QIB: ipo.qib,
+        NII: ipo.nii,
+        Retail: ipo.retail
+    };
 
     return (
         <div className="bg-white dark:bg-dark-card p-5 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
             <div className="flex justify-between items-start mb-3">
                 <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors truncate">
-                        {ipo.name}
+                        {name}
                     </h3>
-                    <p className="text-[10px] font-mono font-medium text-gray-400">({ipo.symbol})</p>
+                    <p className="text-[10px] font-mono font-medium text-gray-400">({symbol})</p>
                 </div>
                 {isClosed && (
                     <div className="text-right ml-2">
                         <div className="text-lg font-black" style={{ color: gainColor }}>
-                            {ipo.gain > 0 ? '+' : ''}{ipo.gain}%
+                            {gain > 0 ? '+' : ''}{gain}%
                         </div>
                     </div>
                 )}
@@ -28,16 +45,16 @@ const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
 
             <div className="space-y-2 mb-4">
                 <p className="text-[10px] text-gray-500">
-                    {isClosed ? `Listed: ${ipo.listing_date}` : `Opens: ${ipo.date}`}
+                    {isClosed ? `Close Date: ${closeDateStr}` : `Opens: ${openDateStr}`}
                 </p>
                 <div className="flex justify-between items-center text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                    <span>Size: ₹{ipo.size_cr || ipo.issue_size} Cr</span>
-                    <span>₹{ipo.price_range || ipo.price}</span>
+                    <span>Size: {issueSize}</span>
+                    <span>{priceRange}</span>
                 </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5 mb-4">
-                {Object.entries(ipo.details).slice(0, 3).map(([key, val]) => (
+                {Object.entries(details).slice(0, 3).map(([key, val]) => (
                     <span key={key} className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/10 text-primary-700 dark:text-primary-300 rounded-full text-[9px] font-bold uppercase tracking-wider">
                         {key}: {val}{typeof val === 'number' && key !== 'pe' ? 'x' : ''}
                     </span>
@@ -53,17 +70,15 @@ const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
                     {isClosed ? 'Re-Analyze' : 'Analyze Now'}
                 </button>
 
-                {isOngoing && (
-                    <a
-                        href="https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=3&ssid=15&smid=11"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-2.5 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:text-primary-600 dark:hover:text-primary-400 transition-all border-dashed"
-                    >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        View DRHP File
-                    </a>
-                )}
+                <a
+                    href={ipo.drhpUrl || "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=3&ssid=15&smid=11"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:text-primary-600 dark:hover:text-primary-400 transition-all border-dashed"
+                >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    View DRHP File
+                </a>
             </div>
         </div>
     );
@@ -115,9 +130,9 @@ export const Listings = () => {
     const onAnalyze = (ipo) => {
         const details = ipo.details || {};
         const p = {
-            qib: parseFloat(details.qib) || 0,
-            nii: parseFloat(details.nii) || 0,
-            retail: parseFloat(details.retail) || 0,
+            qib: parseFloat(details.qib || ipo.qib) || 0,
+            nii: parseFloat(details.nii || ipo.nii) || 0,
+            retail: parseFloat(details.retail || ipo.retail) || 0,
             total_sub: parseFloat(details.total_sub) || 0,
             issue_size: parseFloat(details.issue_size || ipo.issue_size || ipo.size_cr) || 0,
             pe_ratio: parseFloat(details.pe_ratio) || 0,
@@ -127,14 +142,14 @@ export const Listings = () => {
             roce: parseFloat(details.roce) || 0,
             profit_margin: parseFloat(details.profit_margin) || 0,
             revenue_growth: parseFloat(details.revenue_growth) || 15.0,
-            company_name: ipo.name,
+            company_name: ipo.name || ipo.companyName,
             symbol: ipo.symbol,
             bse_code: ipo.bse_code,
-            opening_date: ipo.opening_date,
-            listing_date: ipo.listing_date,
-            actual_gain: ipo.gain,
-            actual_listing_price: ipo.actual_listing_price,
-            issue_price: ipo.price
+            opening_date: ipo.opening_date || (ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ''),
+            listing_date: ipo.listing_date || (ipo.closeDate ? new Date(ipo.closeDate).toLocaleDateString() : ''),
+            actual_gain: ipo.gain || 0,
+            actual_listing_price: ipo.actual_listing_price || ipo.listingPrice || 0,
+            issue_price: ipo.price || ipo.priceBand || 0
         };
         navigate('/analysis', { state: { params: p } });
     };

@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, Newspaper, Info } from 'lucide-react';
 
@@ -27,6 +29,23 @@ const IndexCard = ({ name, value, change, isPositive }) => (
 
 export const Home = () => {
     const navigate = useNavigate();
+    const [blogs, setBlogs] = useState([]);
+    const [loadingBlogs, setLoadingBlogs] = useState(true);
+
+    useEffect(() => {
+        const fetchBlogs = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/blogs');
+                setBlogs(res.data.slice(0, 3));
+            } catch (err) {
+                console.error('Failed to fetch blogs for Home page', err);
+            } finally {
+                setLoadingBlogs(false);
+            }
+        };
+        fetchBlogs();
+    }, []);
+
     const models = [
         { title: 'Listing Gain', desc: 'Predicts opening day returns based on subscription & GMP.', icon: Rocket, color: '#22c55e' },
         { title: 'Demand Tier', desc: 'Classifies market hype and subscription demand.', icon: Users, color: '#f59e0b' },
@@ -42,14 +61,8 @@ export const Home = () => {
         { name: 'India VIX', value: '14.97', change: '3.21', isPositive: false },
     ];
 
-    const news = [
-        { title: 'Primary Market Heat', desc: 'Over 15 IPOs expected to hit the market in the coming month.', time: '2h ago' },
-        { title: 'Fed Policy Impact', desc: 'Global markets react as US Fed hints at steady interest rates.', time: '5h ago' },
-        { title: 'Retail Participation', desc: 'Retail subscription hit record highs in recent mid-cap IPOs.', time: '8h ago' },
-    ];
-
     return (
-        <div className="animate-fade-in space-y-24">
+        <div className="animate-fade-in space-y-16">
             {/* Hero Section */}
             <section className="relative pt-32 pb-20 px-4">
                 <div className="max-w-7xl mx-auto text-center space-y-8">
@@ -61,7 +74,15 @@ export const Home = () => {
                         Next-Gen Stock Intelligence
                     </div>
 
+
+
+
                     <h1 className="text-5xl md:text-8xl font-black text-gray-900 dark:text-white leading-tight tracking-tighter">
+                        {localStorage.getItem('userName') && (
+                            <span className="text-xl md:text-3xl text-gray-500 dark:text-gray-400 block mb-3 font-bold tracking-tight uppercase animate-scale-up">
+                                Welcome Back, {localStorage.getItem('userName')}
+                            </span>
+                        )}
                         Predict Stocks <br />
                         With <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-400">AI Precision</span>
                     </h1>
@@ -108,18 +129,26 @@ export const Home = () => {
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 mb-6">
                                 <Newspaper className="w-5 h-5 text-primary-600" />
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Latest Intelligence</h3>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Latest Insights & Guides</h3>
+
                             </div>
                             <div className="space-y-4">
-                                {news.map((item, i) => (
-                                    <div key={i} className="group cursor-pointer">
-                                        <div className="flex justify-between items-start">
-                                            <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors uppercase tracking-tight leading-snug">{item.title}</h4>
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.time}</span>
+                                {loadingBlogs ? (
+                                    <p className="text-sm text-gray-400">Loading insights...</p>
+                                ) : blogs.length === 0 ? (
+                                    <p className="text-sm text-gray-400">No recent insights available.</p>
+                                ) : (
+                                    blogs.map((blog) => (
+                                        <div key={blog._id} onClick={() => navigate(`/blogs/${blog._id}`)} className="group cursor-pointer">
+                                            <div className="flex justify-between items-start">
+                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors uppercase tracking-tight leading-snug">{blog.title}</h4>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(blog.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-1 font-light leading-relaxed line-clamp-2">{blog.summary}</p>
                                         </div>
-                                        <p className="text-sm text-gray-500 mt-1 font-light leading-relaxed">{item.desc}</p>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
+
                             </div>
                         </div>
 
