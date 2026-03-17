@@ -1,4 +1,4 @@
-# 📊 StockTraQ: Complete Technical project Documentation
+# 📊 StockTraQ: Complete Technical Project Documentation
 
 ---
 
@@ -15,23 +15,23 @@ The project utilizes a **Distributed Micro-services layer** mapping separated pr
 
 ```mermaid
 graph TD
-    subgraph Frontend [1. Client Interface (React)]
+    subgraph Frontend ["1. Client Interface (React)"]
         UI[Dashboard & Analytics UI]
         API_Call[Axios API Client]
     end
 
-    subgraph FastAPI_Backend [2. Intelligence Engine]
+    subgraph FastAPI_Backend ["2. Intelligence Engine (FastAPI)"]
         ML_API[Prediction Endpoints]
         PS[Prediction Service]
     end
 
-    subgraph Node_Backend [3. Management Server]
+    subgraph Node_Backend ["3. Management Server (Express)"]
         Auth_API[User/Admin Auth]
         Manage[CRUD & Blog Management]
     end
 
-    subgraph Data_Layer [4. Data & AI Layer]
-        ModelSet[Ensemble Models (.pkl)]
+    subgraph Data_Layer ["4. Data & AI Layer"]
+        ModelSet[Ensemble Models .pkl]
         DB[(MongoDB)]
         YF[yfinance API / live rates]
     end
@@ -53,7 +53,7 @@ graph TD
 | Layer | Technology | Engineering Benefits |
 | :--- | :--- | :--- |
 | **Frontend** | React 18 + Vite | Virtual DOM, faster bundling, high responsive thresholds. |
-| **Styles** | Vanilla CSS + Framer Motion | Glassmorphism, smooth loading transitions, zero-bloat. |
+| **Styles** | Vanilla CSS + Framer motion | Glassmorphism, smooth loading transitions, zero-bloat. |
 | **Backend 1** | FastAPI (Python 3.10+) | Asynchronous concurrent threading ideal for math modeling data pipelines. |
 | **Backend 2** | Node.js (Express) | Unblocked I/O ideal for dashboard edits, management concurrency streams. |
 | **Database** | MongoDB | Document-layer scaling perfect for unformatted historic CSV aggregations. |
@@ -122,8 +122,39 @@ A standalone Frontend layer demands correct endpoints to separated servers:
 
 ## 🛡️ 7. Admin & Security Management
 
-*   **JWT Handlers**: Administrative endpoints lock critical state edits distribute using local bearer authorizations securely verifying payloads distributing session keys strictly.
-*   **Process Isolation mechanics**: Static asset updates sometimes spawn concurrent blocking timeouts; setups distribute operations through standard background script isolation distributed nicely safeguarding crashes.
+*   **JWT Handle**: Administrative endpoints lock critical state edits distribute using local bearer authorizations securely verifying payloads distributing session keys strictly.
+*   **Process Isolation**: Static asset updates sometimes spawn concurrent blocking timeouts; setups distribute operations through standard background script isolation safeguarding crashes.
 
 ---
-*Documented comprehensively for StockTraQ Core Submission distributed.*
+
+## 💡 8. Rationale Behind Tech Stack Choices
+
+Why were these specific technologies selected for StockTraQ?
+
+### ⚛️ **React + Vite (Frontend)**
+*   **Component-Based View Reuse**: React allows building responsive Dashboard metric cards and reusable forms, keeping structural code modular and maintainable.
+*   **Vite Compiler**: Replaces legacy loaders (like Webpack). It provides near-instantaneous compilation rates distributing hot module updates effortlessly creating efficient local setups.
+
+### 🐍 **FastAPI & Scikit-learn (ML Engine Core)**
+*   **Native Matrix Handling support**: Python is the absolute industry standard for executing Machine Learning matrix manipulations directly.
+*   **Asynchronous Distribution**: FastAPI speeds exceeding common Python frameworks (like Flask/Django). It handles IO-bound triggers effortlessly reducing blocking timeouts distributing predictive streams concurrent loads natively.
+
+### 🍃 **MongoDB (Database Layer)**
+*   **Fluid Dynamic Aggregates sizing**: Static SQL tables require strict migration schemas each time static fields change. MongoDB's NoSQL BSON layer accepts differing financial layouts nicely ensuring unformatted archives remain flexible.
+
+---
+
+## 🔥 9. Why Two Backends? (Hybrid Microservices Design)
+
+You might be asked during defense reviews why there are two server layers (FastAPI + Node). Having a **Split Backend architecture** provides distinct advantages:
+
+1.  **Specialized Efficiency execution**
+    *   *Python* excels at data science and execution logic triggers but executes slower than Javascript layers over pure unblocked I/O reads.
+    *   *Node.js* excels at handling user authorization, CRUD inputs, and fast database distrib feeds effortlessly.
+2.  **Performance Isolation Strategy**
+    *   If 1,000 users invoke highly-demanding Machine Learning predictions over FastAPI, your static static endpoints distribution (Logging In, Adding Admin posts) on Node.js stays completely responsive.
+3.  **Modular maintainability**
+    *   Updates touching User Authentication pipelines strictly avoid touching Predictive mathematics controllers, safeguarding core rating thresholds against unrelated crashes safely.
+
+---
+*Documented comprehensively for StockTraQ Core Submission.*
