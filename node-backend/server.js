@@ -281,6 +281,44 @@ app.post('/admin/setup', async (req, res) => {
   }
 });
 
+// GET /api/live-rates
+// Fetch live prices for indices and commodities
+app.get('/api/live-rates', async (req, res) => {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  
+  // Path to script which is in the root directory (one level up from node-backend)
+  const scriptPath = path.join(__dirname, '..', 'fetch_indices.py');
+  
+  // Execute python script
+  const pythonProcess = spawn('python', [scriptPath]);
+  
+  let dataString = '';
+  let errorString = '';
+  
+  pythonProcess.stdout.on('data', (data) => {
+    dataString += data.toString();
+  });
+  
+  pythonProcess.stderr.on('data', (data) => {
+    errorString += data.toString();
+  });
+  
+  pythonProcess.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`Python script exited with code ${code}. Error: ${errorString}`);
+      return res.status(500).json({ error: 'Failed to fetch live rates', details: errorString });
+    }
+    try {
+      const parsedData = JSON.parse(dataString);
+      res.json(parsedData);
+    } catch (e) {
+      console.error('Failed to parse Python output:', dataString);
+      res.status(500).json({ error: 'Failed to parse live rates data' });
+    }
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Node.js Admin Backend running on port ${PORT}`);

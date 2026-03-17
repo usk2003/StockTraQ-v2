@@ -1,20 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { TrendingUp, TrendingDown, Circle } from 'lucide-react';
 
 export const TickerTape = () => {
-    // Sample data combining market indices and breaking news
-    const items = [
-        { type: 'index', name: 'Nifty 50', value: '22,212.70', change: '+0.74%' },
-        { type: 'index', name: 'Sensex', value: '73,158.24', change: '+0.71%' },
-        { type: 'news', text: 'Market Heat: Over 15 IPOs expected this month.' },
-        { type: 'index', name: 'Nifty Bank', value: '47,019.70', change: '+0.45%' },
-        { type: 'index', name: 'India VIX', value: '14.97', change: '-3.21%' },
-        { type: 'news', text: 'Global markets react as US Fed hints at steady interest rates.' },
-        { type: 'index', name: 'Nasdaq', value: '16,041.62', change: '+1.14%' },
-        { type: 'news', text: 'Retail subscription hits record highs in recent mid-cap IPOs.' },
-        { type: 'index', name: 'S&P 500', value: '5,088.80', change: '+0.80%' },
-        { type: 'news', text: 'SEBI outlines new T+0 settlement guidelines.' },
-    ];
+    const [items, setItems] = useState([
+        { type: 'index', name: 'Nifty 50', value: 'Loading...', change: '0.00%' },
+        { type: 'index', name: 'Sensex', value: 'Loading...', change: '0.00%' }
+    ]);
+
+    useEffect(() => {
+        const fetchRates = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/live-rates');
+                const data = res.data;
+                const newItems = [
+                    { type: 'index', name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent || '0%' },
+                    { type: 'index', name: 'Sensex', value: data['Sensex']?.value || 'N/A', change: data['Sensex']?.changePercent || '0%' },
+                    { type: 'news', text: 'Market Heat: Over 15 IPOs expected this month.' },
+                    { type: 'index', name: 'Gold', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent || '0%' },
+                    { type: 'index', name: 'Silver', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent || '0%' },
+                    { type: 'news', text: 'Global markets react as US Fed hints at steady interest rates.' }
+                ];
+                setItems(newItems);
+            } catch (err) {
+                console.error('Failed to fetch live rates for TickerTape', err);
+            }
+        };
+        fetchRates();
+        const interval = setInterval(fetchRates, 300000); // 5 mins
+        return () => clearInterval(interval);
+    }, []);
 
     const renderItem = (item, idx) => {
         if (item.type === 'index') {

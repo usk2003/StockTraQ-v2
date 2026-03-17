@@ -31,6 +31,12 @@ export const Home = () => {
     const navigate = useNavigate();
     const [blogs, setBlogs] = useState([]);
     const [loadingBlogs, setLoadingBlogs] = useState(true);
+    const [indices, setIndices] = useState([
+        { name: 'Nifty 50', value: 'Loading...', change: '0.00', isPositive: true },
+        { name: 'Sensex', value: 'Loading...', change: '0.00', isPositive: true },
+        { name: 'Gold', value: 'Loading...', change: '0.00', isPositive: true },
+        { name: 'Silver', value: 'Loading...', change: '0.00', isPositive: true }
+    ]);
 
     useEffect(() => {
         const fetchBlogs = async () => {
@@ -43,7 +49,27 @@ export const Home = () => {
                 setLoadingBlogs(false);
             }
         };
+
+        const fetchRates = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/live-rates');
+                const data = res.data;
+                const newIndices = [
+                    { name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent.replace('%', '') || '0.00', isPositive: data['Nifty 50']?.isPositive ?? true },
+                    { name: 'Sensex', value: data['Sensex']?.value || 'N/A', change: data['Sensex']?.changePercent.replace('%', '') || '0.00', isPositive: data['Sensex']?.isPositive ?? true },
+                    { name: 'Gold', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent.replace('%', '') || '0.00', isPositive: data['Gold']?.isPositive ?? true },
+                    { name: 'Silver', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent.replace('%', '') || '0.00', isPositive: data['Silver']?.isPositive ?? true }
+                ];
+                setIndices(newIndices);
+            } catch (err) {
+                console.error('Failed to fetch live rates for Home', err);
+            }
+        };
+
         fetchBlogs();
+        fetchRates();
+        const interval = setInterval(fetchRates, 300000); // 5 mins
+        return () => clearInterval(interval);
     }, []);
 
     const models = [
@@ -52,13 +78,6 @@ export const Home = () => {
         { title: 'Long-Term', desc: 'Forecasts performance over a 6-12 month horizon.', icon: Target, color: '#3b82f6' },
         { title: 'PE Valuation', desc: 'Evaluates pricing efficiency relative to peers.', icon: PieChart, color: '#8b5cf6' },
         { title: 'Fundamentals', desc: 'Scores financial health (Revenue, PAT, ROE).', icon: Shield, color: '#10b981' },
-    ];
-
-    const indices = [
-        { name: 'Nifty 50', value: '22,212.70', change: '0.74', isPositive: true },
-        { name: 'Sensex', value: '73,158.24', change: '0.71', isPositive: true },
-        { name: 'Nifty Bank', value: '47,019.70', change: '0.45', isPositive: true },
-        { name: 'India VIX', value: '14.97', change: '3.21', isPositive: false },
     ];
 
     return (

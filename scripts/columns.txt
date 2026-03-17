@@ -40,4 +40,4 @@ PAT_Margin_%
 EPS_(Rs.)_Pre-IPO
 EPS_(Rs.)_Post-IPO
 Price_to_Book_Value
-Ebitda_(Rs.cr.)
+Ebitda_(Rs.cr.) 
