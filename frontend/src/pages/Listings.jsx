@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRight, ExternalLink, AlertTriangle, BookOpen, AlertCircle, MessageSquare, Bot } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:5000/api/ipos';
 
 const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
     // We map MongoDB schema to UI fallback to old Python format
@@ -96,14 +96,13 @@ export const Listings = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [ongoingRes, closedRes, bestRes] = await Promise.all([
-                    axios.get(`${API_BASE}/ongoing`),
-                    axios.get(`${API_BASE}/closed`),
-                    axios.get(`${API_BASE}/best-listed`)
-                ]);
-                setOngoing(ongoingRes.data);
-                setClosed(closedRes.data);
-                setBestListed(bestRes.data);
+                const ongoingRes = await axios.get(`${API_BASE}/ongoing`).catch(e => ({ data: [] }));
+                const closedRes = await axios.get(`${API_BASE}/closed`).catch(e => ({ data: [] }));
+                const bestRes = await axios.get(`${API_BASE}/best-listed`).catch(e => ({ data: [] }));
+
+                setOngoing(ongoingRes.data || []);
+                setClosed(closedRes.data || []);
+                setBestListed(bestRes.data || []);
             } catch (err) {
                 console.error('Fetch failed', err);
             }

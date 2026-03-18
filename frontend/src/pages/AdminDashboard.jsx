@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2 } from 'lucide-react';
+import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil } from 'lucide-react';
 
 
 export const AdminDashboard = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
-    const [activeTab, setActiveTab] = useState('add_ipo');
+    
+    const queryParams = new URLSearchParams(location.search);
+    const tabParam = queryParams.get('tab');
+    
+    const [activeTab, setActiveTab] = useState(tabParam || 'overview');
     const [greeting, setGreeting] = useState('Hi Admin');
 
     const [ipoData, setIpoData] = useState({
@@ -23,7 +28,13 @@ export const AdminDashboard = () => {
         qib: '',
         nii: '',
         retail: '',
-        drhpUrl: ''
+        drhpUrl: '',
+        listingPrice: '',
+        pe: '',
+        revenue: '',
+        pat: '',
+        roe: '',
+        roce: ''
     });
 
     const [blogData, setBlogData] = useState({
@@ -43,6 +54,9 @@ export const AdminDashboard = () => {
     const [allIpos, setAllIpos] = useState([]);
     const [allBlogs, setAllBlogs] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
+    const [editingId, setEditingId] = useState(null);
+    const [faqData, setFaqData] = useState({ question: '', answer: '' });
+    const [allFaqs, setAllFaqs] = useState([]);
 
 
 
@@ -62,6 +76,14 @@ export const AdminDashboard = () => {
 
     }, [navigate]);
 
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const tabParam = queryParams.get('tab');
+        if (tabParam) {
+            setActiveTab(tabParam);
+        }
+    }, [location.search]);
+
     const handleLogout = () => {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminName');
@@ -80,12 +102,18 @@ export const AdminDashboard = () => {
         
         try {
             const token = localStorage.getItem('adminToken');
-            await axios.post('http://localhost:5000/admin/add-ipo', ipoData, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-            setSuccessMsg('IPO successfully added to database!');
+            if (editingId) {
+                await axios.put(`http://localhost:5000/admin/ipo/${editingId}`, ipoData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('IPO updated successfully!');
+                setEditingId(null);
+            } else {
+                await axios.post('http://localhost:5000/admin/add-ipo', ipoData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('IPO successfully added to database!');
+            }
             setIpoData({
                 companyName: '',
                 symbol: '',
@@ -97,7 +125,13 @@ export const AdminDashboard = () => {
                 qib: '',
                 nii: '',
                 retail: '',
-                drhpUrl: ''
+                drhpUrl: '',
+                listingPrice: '',
+                pe: '',
+                revenue: '',
+                pat: '',
+                roe: '',
+                roce: ''
             });
         } catch (err) {
             setErrorMsg(err.response?.data?.error || 'Failed to add IPO. Check fields and try again.');
@@ -159,23 +193,60 @@ export const AdminDashboard = () => {
         }
     };
 
+    const handleFaqSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
+        
+        try {
+            const token = localStorage.getItem('adminToken');
+            await axios.post('http://localhost:5000/admin/add-faq', faqData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSuccessMsg('FAQ added successfully!');
+            setFaqData({ question: '', answer: '' });
+            fetchContent(); 
+        } catch (err) {
+            setErrorMsg(err.response?.data?.error || 'Failed to add FAQ.');
+        } finally {
+            setLoading(false);
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handleDeleteFaq = async (id) => {
+        if (!window.confirm('Delete this FAQ?')) return;
+        try {
+            const token = localStorage.getItem('adminToken');
+            await axios.delete(`http://localhost:5000/admin/faq/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAllFaqs(allFaqs.filter(faq => faq._id !== id));
+            setSuccessMsg('FAQ deleted!');
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
 
     const fetchContent = async () => {
         try {
-            const [ongoingIpos, closedIpos, blogsRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/ipos/ongoing'),
-                axios.get('http://localhost:5000/api/ipos/closed'),
-                axios.get('http://localhost:5000/api/blogs')
-            ]);
-            setAllIpos([...ongoingIpos.data, ...closedIpos.data]);
-            setAllBlogs(blogsRes.data);
+            const ongoingRes = await axios.get('http://localhost:5000/api/ipos/ongoing').catch(e => ({ data: [] }));
+            const closedRes = await axios.get('http://localhost:5000/api/ipos/closed').catch(e => ({ data: [] }));
+            const blogsRes = await axios.get('http://localhost:5000/api/blogs').catch(e => ({ data: [] }));
+            const faqsRes = await axios.get('http://localhost:5000/api/faqs').catch(e => ({ data: [] }));
+
+            setAllIpos([...(ongoingRes.data || []), ...(closedRes.data || [])]);
+            setAllBlogs(blogsRes.data || []);
+            setAllFaqs(faqsRes.data || []);
         } catch (err) {
             console.error(err);
         }
     };
 
     useEffect(() => {
-        if (activeTab === 'manage_content') {
+        if (activeTab === 'manage_content' || activeTab === 'overview') {
             fetchContent();
         }
     }, [activeTab]);
@@ -193,7 +264,7 @@ export const AdminDashboard = () => {
     };
 
     useEffect(() => {
-        if (activeTab === 'live_traffic') {
+        if (activeTab === 'live_traffic' || activeTab === 'overview') {
             fetchUsers();
         }
     }, [activeTab]);
@@ -234,7 +305,7 @@ export const AdminDashboard = () => {
     const renderAddIpoForm = () => (
         <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden animate-fade-in">
             <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-4 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-primary-500" /> Create New IPO Entry
+                {editingId ? <Pencil className="w-5 h-5 text-yellow-500" /> : <Plus className="w-5 h-5 text-primary-500" />} {editingId ? 'Edit IPO Entry' : 'Create New IPO Entry'}
             </h2>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
@@ -249,6 +320,12 @@ export const AdminDashboard = () => {
                     { label: 'QIB Subscription (x)', name: 'qib', type: 'number', step: '0.01', placeholder: 'e.g. 15.5' },
                     { label: 'NII Subscription (x)', name: 'nii', type: 'number', step: '0.01', placeholder: 'e.g. 5.2' },
                     { label: 'Retail Subscription (x)', name: 'retail', type: 'number', step: '0.01', placeholder: 'e.g. 2.1' },
+                    { label: 'Listing Price (₹)', name: 'listingPrice', type: 'number', step: '0.01', placeholder: 'e.g. 120 (Fill if Closed)' },
+                    { label: 'Price to Earnings (P/E)', name: 'pe', type: 'number', step: '0.01', placeholder: 'e.g. 25.4' },
+                    { label: 'Revenue (₹ Cr)', name: 'revenue', type: 'number', step: '0.01', placeholder: 'e.g. 500' },
+                    { label: 'PAT (Profit After Tax) (₹ Cr)', name: 'pat', type: 'number', step: '0.01', placeholder: 'e.g. 45' },
+                    { label: 'ROE (%)', name: 'roe', type: 'number', step: '0.01', placeholder: 'e.g. 15.2' },
+                    { label: 'ROCE (%)', name: 'roce', type: 'number', step: '0.01', placeholder: 'e.g. 18.5' },
                     { label: 'DRHP Link URL', name: 'drhpUrl', type: 'url', placeholder: 'https://sebi.gov.in/...' }
                 ].map((field, idx) => (
                     <div key={idx} className={field.name === 'drhpUrl' ? 'md:col-span-2' : ''}>
@@ -262,7 +339,7 @@ export const AdminDashboard = () => {
                             onChange={handleChange}
                             step={field.step}
                             placeholder={field.placeholder}
-                            required
+                            required={!['listingPrice', 'pe', 'revenue', 'pat', 'roe', 'roce'].includes(field.name)}
                             className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-shadow"
                         />
                     </div>
@@ -274,7 +351,7 @@ export const AdminDashboard = () => {
                         disabled={loading}
                         className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase tracking-widest rounded-xl transition-colors shadow-lg shadow-primary-500/30 flex justify-center items-center"
                     >
-                        {loading ? 'Processing...' : 'Add IPO to Database'}
+                        {loading ? 'Processing...' : editingId ? 'Update IPO Details' : 'Add IPO to Database'}
                     </button>
                 </div>
             </form>
@@ -408,7 +485,7 @@ export const AdminDashboard = () => {
                                     <th className="pb-3 pr-4">Company</th>
                                     <th className="pb-3 pr-4">Symbol</th>
                                     <th className="pb-3 pr-4">GMP</th>
-                                    <th className="pb-3 text-right">Delete</th>
+                                    <th className="pb-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-dark-border">
@@ -417,7 +494,35 @@ export const AdminDashboard = () => {
                                         <td className="py-4 font-bold text-gray-900 dark:text-white">{ipo.companyName}</td>
                                         <td className="py-4 text-gray-500">{ipo.symbol}</td>
                                         <td className="py-4 text-green-600 font-bold">₹{ipo.gmp || '0'}</td>
-                                        <td className="py-4 text-right">
+                                        <td className="py-4 text-right flex items-center justify-end gap-2">
+                                            <button 
+                                                onClick={() => {
+                                                    setIpoData({
+                                                        companyName: ipo.companyName || '',
+                                                        symbol: ipo.symbol || '',
+                                                        issueSize: ipo.issueSize || '',
+                                                        priceBand: ipo.priceBand || '',
+                                                        openDate: ipo.openDate ? new Date(ipo.openDate).toISOString().split('T')[0] : '',
+                                                        closeDate: ipo.closeDate ? new Date(ipo.closeDate).toISOString().split('T')[0] : '',
+                                                        gmp: ipo.gmp || '',
+                                                        qib: ipo.qib || '',
+                                                        nii: ipo.nii || '',
+                                                        retail: ipo.retail || '',
+                                                        drhpUrl: ipo.drhpUrl || '',
+                                                        listingPrice: ipo.listingPrice || '',
+                                                        pe: ipo.pe || '',
+                                                        revenue: ipo.revenue || '',
+                                                        pat: ipo.pat || '',
+                                                        roe: ipo.roe || '',
+                                                        roce: ipo.roce || ''
+                                                    });
+                                                    setEditingId(ipo._id);
+                                                    setActiveTab('add_ipo');
+                                                }} 
+                                                className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg transition-colors"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
                                             <button onClick={() => handleDeleteIpo(ipo._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -446,6 +551,30 @@ export const AdminDashboard = () => {
                                     <p className="text-xs text-gray-500">By {blog.author} • {new Date(blog.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <button onClick={() => handleDeleteBlog(blog._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Manage FAQs */}
+            <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl">
+                <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-4">
+                    <MessageSquare className="w-5 h-5 text-yellow-500" /> Manage FAQs
+                </h2>
+                {allFaqs.length === 0 ? (
+                    <p className="text-center text-gray-500 font-medium py-8">No FAQs found in database.</p>
+                ) : (
+                    <div className="space-y-4">
+                        {allFaqs.map(faq => (
+                            <div key={faq._id} className="flex justify-between items-start bg-gray-50 dark:bg-dark-bg p-4 rounded-xl border border-gray-100 dark:border-dark-border">
+                                <div className="max-w-[85%]">
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-sm">{faq.question}</h3>
+                                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{faq.answer}</p>
+                                </div>
+                                <button onClick={() => handleDeleteFaq(faq._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
@@ -490,6 +619,81 @@ export const AdminDashboard = () => {
         </div>
     );
 
+    const renderOverview = () => (
+        <div className="space-y-8 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                    { label: 'Total Users', value: allUsers.length, icon: <Users className="w-6 h-6" /> },
+                    { label: 'Total IPOs', value: allIpos.length, icon: <BarChart3 className="w-6 h-6" /> },
+                    { label: 'Blog Posts', value: allBlogs.length, icon: <FileText className="w-6 h-6" /> }
+                ].map((stat, idx) => (
+                    <div key={idx} className="bg-white dark:bg-dark-card p-6 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl flex items-center justify-between hover:scale-[1.02] transition-transform duration-200 border-t-4 border-t-primary-500">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                            <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stat.value}</h3>
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-dark-bg rounded-2xl text-primary-600">
+                            {stat.icon}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl h-[300px] flex items-center justify-center text-center">
+                 <div>
+                      <div className="p-5 bg-green-50 dark:bg-green-900/10 rounded-full inline-flex mb-4">
+                           <CheckCircle className="w-10 h-10 text-green-500" />
+                      </div>
+                      <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase">System Operational</h3>
+                      <p className="text-gray-500 mt-2 text-sm max-w-sm">All backend services, database synchronizations, and live metric streams are online and healthy.</p>
+                 </div>
+            </div>
+        </div>
+    );
+
+    const renderAddFaqForm = () => (
+        <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl animate-fade-in">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-6 flex items-center gap-2">
+                <Plus className="w-6 h-6 text-primary-500" /> Add New FAQ
+            </h2>
+            <form onSubmit={handleFaqSubmit} className="space-y-6">
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Question</label>
+                    <input 
+                        type="text" 
+                        name="question" 
+                        value={faqData.question} 
+                        onChange={(e) => setFaqData({ ...faqData, question: e.target.value })} 
+                        required 
+                        className="w-full p-4 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-xl focus:outline-none focus:border-primary-500 text-gray-900 dark:text-white font-medium"
+                        placeholder="e.g. What is the AI Rating system?"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Answer</label>
+                    <textarea 
+                        name="answer" 
+                        value={faqData.answer} 
+                        onChange={(e) => setFaqData({ ...faqData, answer: e.target.value })} 
+                        required 
+                        rows="4"
+                        className="w-full p-4 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-xl focus:outline-none focus:border-primary-500 text-gray-900 dark:text-white font-medium"
+                        placeholder="Provide a clear answer..."
+                    />
+                </div>
+                <div className="flex justify-end pt-4">
+                    <button 
+                        type="submit" 
+                        disabled={loading} 
+                        className="px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-primary-500/20 transition-all hover:scale-105"
+                    >
+                        {loading ? 'Adding...' : 'Add FAQ'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+
     const renderPlaceholder = (title, icon, message) => (
 
 
@@ -508,9 +712,11 @@ export const AdminDashboard = () => {
     );
 
     const tabs = [
-        { id: 'manage_content', label: 'Manage Content', icon: <LayoutDashboard className="w-5 h-5" /> },
+        { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
+        { id: 'manage_content', label: 'Manage Content', icon: <Database className="w-5 h-5" /> },
         { id: 'add_ipo', label: 'Add New IPO', icon: <Plus className="w-5 h-5" /> },
         { id: 'add_blog', label: 'Add New Blog', icon: <FileText className="w-5 h-5" /> },
+        { id: 'add_faq', label: 'Add FAQ', icon: <MessageSquare className="w-5 h-5" /> },
         { id: 'add_version', label: 'System Versioning', icon: <CheckCircle className="w-5 h-5" /> },
 
         { id: 'add_drhp', label: 'Add New DRHP File', icon: <FileText className="w-5 h-5" /> },
@@ -592,9 +798,11 @@ export const AdminDashboard = () => {
 
                     {/* Main Content Area */}
                     <div className="flex-1">
+                        {activeTab === 'overview' && renderOverview()}
                         {activeTab === 'manage_content' && renderManageContent()}
                         {activeTab === 'add_ipo' && renderAddIpoForm()}
                         {activeTab === 'add_blog' && renderAddBlogForm()}
+                        {activeTab === 'add_faq' && renderAddFaqForm()}
                         {activeTab === 'add_version' && renderAddVersionForm()}
 
 

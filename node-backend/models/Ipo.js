@@ -13,6 +13,11 @@ const ipoSchema = new mongoose.Schema({
   retail: { type: Number, required: true },
   drhpUrl: { type: String, required: true },
   listingPrice: { type: Number, default: null },
+  pe: { type: Number, default: null },
+  revenue: { type: Number, default: null },
+  pat: { type: Number, default: null },
+  roe: { type: Number, default: null },
+  roce: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

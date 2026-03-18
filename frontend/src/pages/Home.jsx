@@ -2,17 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, Newspaper, Info } from 'lucide-react';
+import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, AlertTriangle } from 'lucide-react';
 
-const FeatureCard = ({ icon: Icon, title, description, color }) => (
-    <div className="bg-white dark:bg-dark-card p-8 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-xl transition-all duration-300 group">
-        <div className={`p-3 rounded-2xl w-fit mb-6 transition-colors duration-300 group-hover:scale-110`} style={{ backgroundColor: `${color}15` }}>
-            <Icon className="w-8 h-8" style={{ color: color }} />
-        </div>
-        <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{title}</h3>
-        <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-light">{description}</p>
-    </div>
-);
+
 
 const IndexCard = ({ name, value, change, isPositive }) => (
     <div className="flex flex-col p-6 bg-white dark:bg-dark-card rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm">
@@ -29,8 +21,8 @@ const IndexCard = ({ name, value, change, isPositive }) => (
 
 export const Home = () => {
     const navigate = useNavigate();
-    const [blogs, setBlogs] = useState([]);
-    const [loadingBlogs, setLoadingBlogs] = useState(true);
+    const [faqs, setFaqs] = useState([]);
+
     const [indices, setIndices] = useState([
         { name: 'Nifty 50', value: 'Loading...', change: '0.00', isPositive: true },
         { name: 'Sensex', value: 'Loading...', change: '0.00', isPositive: true },
@@ -39,17 +31,6 @@ export const Home = () => {
     ]);
 
     useEffect(() => {
-        const fetchBlogs = async () => {
-            try {
-                const res = await axios.get('http://localhost:5000/api/blogs');
-                setBlogs(res.data.slice(0, 3));
-            } catch (err) {
-                console.error('Failed to fetch blogs for Home page', err);
-            } finally {
-                setLoadingBlogs(false);
-            }
-        };
-
         const fetchRates = async () => {
             try {
                 const res = await axios.get('http://localhost:5000/api/live-rates');
@@ -66,19 +47,22 @@ export const Home = () => {
             }
         };
 
-        fetchBlogs();
+        const fetchFaqs = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/faqs');
+                setFaqs(res.data || []);
+            } catch (err) {
+                console.error('Failed to fetch faqs for Home', err);
+            }
+        };
+
+        fetchFaqs();
         fetchRates();
         const interval = setInterval(fetchRates, 300000); // 5 mins
         return () => clearInterval(interval);
     }, []);
 
-    const models = [
-        { title: 'Listing Gain', desc: 'Predicts opening day returns based on subscription & GMP.', icon: Rocket, color: '#22c55e' },
-        { title: 'Demand Tier', desc: 'Classifies market hype and subscription demand.', icon: Users, color: '#f59e0b' },
-        { title: 'Long-Term', desc: 'Forecasts performance over a 6-12 month horizon.', icon: Target, color: '#3b82f6' },
-        { title: 'PE Valuation', desc: 'Evaluates pricing efficiency relative to peers.', icon: PieChart, color: '#8b5cf6' },
-        { title: 'Fundamentals', desc: 'Scores financial health (Revenue, PAT, ROE).', icon: Shield, color: '#10b981' },
-    ];
+
 
     return (
         <div className="animate-fade-in space-y-16">
@@ -91,6 +75,15 @@ export const Home = () => {
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
                         </span>
                         Next-Gen Stock Intelligence
+                    </div>
+                    
+                    <div className="flex justify-center -mt-4">
+                        <button 
+                            onClick={() => document.getElementById('disclaimer')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="text-[10px] text-gray-400 dark:text-gray-500 hover:text-primary-600 dark:hover:text-primary-500 cursor-pointer inline-flex items-center gap-1 font-medium underline underline-offset-2 transition-colors"
+                        >
+                            <AlertTriangle className="w-3 h-3 text-yellow-500" /> Read Investment Disclaimer
+                        </button>
                     </div>
 
 
@@ -143,85 +136,132 @@ export const Home = () => {
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-8">
-                        {/* News */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <Newspaper className="w-5 h-5 text-primary-600" />
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Latest Insights & Guides</h3>
 
-                            </div>
-                            <div className="space-y-4">
-                                {loadingBlogs ? (
-                                    <p className="text-sm text-gray-400">Loading insights...</p>
-                                ) : blogs.length === 0 ? (
-                                    <p className="text-sm text-gray-400">No recent insights available.</p>
-                                ) : (
-                                    blogs.map((blog) => (
-                                        <div key={blog._id} onClick={() => navigate(`/blogs/${blog._id}`)} className="group cursor-pointer">
-                                            <div className="flex justify-between items-start">
-                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors uppercase tracking-tight leading-snug">{blog.title}</h4>
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(blog.createdAt).toLocaleDateString()}</span>
-                                            </div>
-                                            <p className="text-sm text-gray-500 mt-1 font-light leading-relaxed line-clamp-2">{blog.summary}</p>
-                                        </div>
-                                    ))
-                                )}
+                </div>
+            </section>
 
-                            </div>
-                        </div>
+            {/* How It Works Section */}
+            <section className="px-4 py-8 border-t border-gray-100 dark:border-dark-border">
+                <div className="max-w-7xl mx-auto space-y-10">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">How StockTraQ Works</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mt-2 font-light text-sm">Make backed investment decisions in 3 easy steps.</p>
+                    </div>
 
-                        {/* Quick Tip */}
-                        <div className="bg-primary-600 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-primary-500/20">
-                            <Info className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
-                            <h3 className="text-2xl font-black mb-4 uppercase tracking-tighter">Pro Tip: GMP vs Subscription</h3>
-                            <p className="text-primary-100 font-light leading-relaxed mb-6">
-                                While Grey Market Premium (GMP) is a strong indicator, our AI emphasizes **Subscription Data** (QIB & NII) as a more reliable predictor of actual listing day momentum.
-                            </p>
-                            <button
-                                onClick={() => navigate('/insight')}
-                                className="px-6 py-3 bg-white text-primary-600 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-all active:scale-95"
-                            >
-                                Ask Insight TraQ
-                            </button>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                        <div className="hidden md:block absolute top-1/2 left-0 right-0 h-0.5 bg-gray-100 dark:bg-dark-border -translate-y-1/2 z-0"></div>
+
+                        {[
+                            { step: '01', title: 'Explore Listings', desc: 'Browse live, upcoming, and closed IPO indices seamlessly on our dashboard.', icon: Rocket },
+                            { step: '02', title: 'Check AI Rating', desc: 'Instantly view a single 1-10 predictive score based on demand physics.', icon: Target },
+                            { step: '03', title: 'Invest Confidentially', desc: 'Secure objective analytic metrics eliminating market bias or speculation.', icon: Shield }
+                        ].map((item, idx) => {
+                            const Icon = item.icon;
+                            return (
+                                <div key={idx} className="bg-white dark:bg-dark-card p-8 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm flex flex-col items-center text-center gap-4 hover:shadow-lg transition-transform hover:-translate-y-1 relative z-10">
+                                    <div className="absolute top-4 left-4 text-4xl font-black text-gray-100 dark:text-white/10 pointer-events-none">
+                                         {item.step}
+                                    </div>
+                                    <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-2xl text-primary-600 relative">
+                                        <Icon className="w-6 h-6" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">{item.title}</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-light leading-relaxed">{item.desc}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
 
-            {/* Models Section - Background and Borders removed for transparency */}
-            <section className="py-20 px-4">
+            {/* Our Story System / Advantages Section */}
+            <section className="px-4 py-12 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-dark-card/10">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center border-t border-gray-100 dark:border-dark-border pt-16">
+                    <div className="space-y-6">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                             Our Story & Vision
+                        </div>
+                        <h2 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
+                            From Speculation <br />
+                            To <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-400">Calculated Science</span>
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400 font-light leading-relaxed">
+                            StockTraQ was ideated to solve a common investor dilemma: navigating the noisy hype surrounding Initial Public Offerings (IPOs). Traditional investing often relies on subjective Grey Market Premium (GMP) data that overlooks underlying fundamentals or subscriptions.
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 font-light leading-relaxed">
+                            We started with a vision to build a self-contained intelligence engine that aggregates historical outcomes and subscription traction into objective metrics. **Where it’s going now?** It’s evolving into a fully decoupled microservice platform servicing sub-second live analytics safely to reduce risk profiles.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[
+                            { title: 'Instant Market Check', desc: 'Access sub-second live demand and analytics so you never miss fast-moving listing windows.', icon: Rocket },
+                            { title: 'Actionable Ratings (1-10)', desc: 'Simplified 1 to 10 numeric scores mapped from subscription traction and company health diagnostics.', icon: Target },
+                            { title: 'Backtested Precision', desc: 'Aggregates years of historical listings to filter out speculation bias and hype.', icon: PieChart },
+                            { title: '100% Unbiased Logic', desc: 'Purely math-driven scoring free from broker recommendations, keeping assesssment impartial.', icon: Shield }
+                        ].map((adv, idx) => {
+                            const Icon = adv.icon;
+                            return (
+                                <div key={idx} className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm flex flex-col items-start gap-4 hover:scale-[1.02] transition-transform duration-200">
+                                    <div className="p-3 bg-primary-50 dark:bg-primary-900/10 rounded-2xl text-primary-600">
+                                         <Icon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 dark:text-white uppercase tracking-tight text-sm mb-1">{adv.title}</h4>
+                                        <p className="text-xs text-gray-400 dark:text-gray-400 font-light leading-relaxed">{adv.desc}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </section>
+
+            {/* FAQ Section */}
+            <section className="px-4 py-16 border-t border-gray-100 dark:border-dark-border">
+                <div className="max-w-4xl mx-auto space-y-12">
+                     <div className="text-center">
+                         <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Frequently Asked Questions</h2>
+                         <p className="text-gray-500 dark:text-gray-400 mt-2 font-light text-sm">Got questions? We have answers.</p>
+                     </div>
+
+                     <div className="space-y-4">
+                         {(faqs.length > 0 ? faqs : [
+                             { question: 'What is the AI Rating system?', answer: 'Our Rating system scores IPOs from 1 to 10 based on subscription demand from QIB/NII buyers, Grey Market Premium, and underlying company health diagnostics backtested over historical listings datasets.' },
+                             { question: 'What does Grey Market Premium (GMP) signify?', answer: 'GMP is the premium investors pay to buy shares in the secondary grey market before listing. While useful, StockTraQ weights it inside composite models rather than relying on it alone to avoid speculative bias.' },
+                             { question: 'How often are demand metrics updated?', answer: 'Listing data and live indices update continuously during active market support triggers throughout the day as data feeds synchronise with live tickers.' }
+                         ]).map((faq, idx) => (
+                             <details key={idx} className="group bg-white dark:bg-dark-card p-6 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm cursor-pointer open:shadow-md transition-all">
+                                 <summary className="flex justify-between items-center font-bold text-gray-900 dark:text-white uppercase tracking-tight text-sm list-none select-none">
+                                     <span>{faq.question}</span>
+                                     <ArrowRight className="w-4 h-4 text-primary-600 transition-transform duration-200 group-open:rotate-90" />
+                                 </summary>
+                                 <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 font-light leading-relaxed">
+                                     {faq.answer}
+                                 </p>
+                             </details>
+                         ))}
+                     </div>
+                </div>
+            </section>
+
+            {/* Disclaimer Section */}
+            <section id="disclaimer" className="px-4 py-12">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16 space-y-4">
-                        <h2 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Our AI Intelligence Engine</h2>
-                        <p className="text-gray-500 dark:text-gray-400 font-light max-w-xl mx-auto">Powered by a Hybrid Ensemble of Random Forest, Gradient Boosting, and Optimized Linear Regression.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                        {models.map((model, idx) => (
-                            <FeatureCard key={idx} {...model} />
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Stats Section */}
-            <section className="py-20 px-4">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-center border-t border-gray-100 dark:border-dark-border pt-20">
-                    <div className="space-y-2">
-                        <div className="text-6xl font-black text-primary-600 tracking-tighter">850+</div>
-                        <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">Stocks Analyzed</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="text-6xl font-black text-primary-600 tracking-tighter">92.4%</div>
-                        <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">Prediction Accuracy</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="text-6xl font-black text-primary-600 tracking-tighter">5</div>
-                        <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">Proprietary Models</p>
+                    <div className="bg-yellow-50 dark:bg-yellow-900/10 border-2 border-yellow-200 dark:border-yellow-700/30 p-8 rounded-3xl flex flex-col md:flex-row items-center gap-6 shadow-xl shadow-yellow-500/5">
+                        <div className="p-4 bg-yellow-100 dark:bg-yellow-900/40 rounded-2xl text-yellow-600">
+                             <AlertTriangle className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-black text-yellow-800 dark:text-yellow-500 uppercase tracking-tight text-sm">Legal & Risk Disclaimer</h3>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-600/80 font-medium leading-relaxed">
+                                 All calculated percentages, predictive models, and relative metric indices mapped on StockTraQ are provided for educational assessment and review only. Access does not constitute financial advice. Investors are advised to consult registered SEBI investment advisors making accurate commit actual cash trades.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
+
         </div>
     );
 };

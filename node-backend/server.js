@@ -19,6 +19,7 @@ const Ipo = require('./models/Ipo');
 const Blog = require('./models/Blog');
 const Version = require('./models/Version');
 const User = require('./models/User');
+const Faq = require('./models/Faq');
 const bcrypt = require('bcryptjs');
 const { mongo } = require('mongoose'); // Just for safety if needed
 
@@ -183,6 +184,48 @@ app.get('/admin/users', authenticateToken, async (req, res) => {
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// POST /admin/add-faq
+app.post('/admin/add-faq', authenticateToken, async (req, res) => {
+  try {
+    const { question, answer } = req.body;
+    const newFaq = new Faq({ question, answer });
+    await newFaq.save();
+    res.status(201).json({ message: 'FAQ added successfully', faq: newFaq });
+  } catch (error) {
+    res.status(400).json({ error: 'Failed to add FAQ', details: error.message });
+  }
+});
+
+// GET /api/faqs
+app.get('/api/faqs', async (req, res) => {
+  try {
+    const faqs = await Faq.find().sort({ createdAt: -1 });
+    res.json(faqs);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /admin/faq/:id
+app.delete('/admin/faq/:id', authenticateToken, async (req, res) => {
+  try {
+    await Faq.findByIdAndDelete(req.params.id);
+    res.json({ message: 'FAQ deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ error: 'Delete failed', details: error.message });
+  }
+});
+
+// PUT /admin/ipo/:id
+app.put('/admin/ipo/:id', authenticateToken, async (req, res) => {
+  try {
+    const updatedIpo = await Ipo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: 'IPO updated successfully', ipo: updatedIpo });
+  } catch (error) {
+    res.status(400).json({ error: 'Update failed', details: error.message });
   }
 });
 

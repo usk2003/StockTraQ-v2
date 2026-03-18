@@ -1,15 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, TrendingUp, Home, BarChart2, Activity, Search, CheckCircle, Rocket, MessageSquare, Milestone, BookOpen } from 'lucide-react';
+import { Sun, Moon, TrendingUp, Home, BarChart2, Activity, Search, CheckCircle, Rocket, MessageSquare, Milestone, BookOpen, LayoutDashboard, Database, Plus, FileText, ExternalLink } from 'lucide-react';
 
 
 export const Navbar = ({ toggleTheme, theme }) => {
     const location = useLocation();
-    const navItems = [
+    const isAdmin = localStorage.getItem('adminToken');
+
+    const navItems = isAdmin ? [
+        { name: 'Overview', icon: LayoutDashboard, path: '/admin/dashboard?tab=overview' },
+        { name: 'Manage', icon: Database, path: '/admin/dashboard?tab=manage_content' },
+        { name: 'Add IPO', icon: Plus, path: '/admin/dashboard?tab=add_ipo' },
+        { name: 'Add Blog', icon: FileText, path: '/admin/dashboard?tab=add_blog' },
+        { name: 'Add FAQ', icon: MessageSquare, path: '/admin/dashboard?tab=add_faq' },
+        { name: 'View Site', icon: ExternalLink, path: '/' }
+    ] : [
         { name: 'Home', icon: Home, path: '/' },
         { name: 'IPO TraQ', icon: Rocket, path: '/ipo' },
         { name: 'Insight TraQ', icon: MessageSquare, path: '/insight' },
         { name: 'Blogs', icon: BookOpen, path: '/blogs' },
-        { name: 'Roadmap', icon: Milestone, path: '/roadmap' },
+        { name: 'Roadmap', icon: Milestone, path: '/roadmap' }
     ];
 
 
