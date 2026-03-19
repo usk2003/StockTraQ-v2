@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LoginPromptModal } from '../components/LoginPromptModal';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRight, ExternalLink, AlertTriangle, BookOpen, AlertCircle, MessageSquare, Bot } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000/api/ipos';
+const API_BASE = `${NODE_API}/api/ipos`;
 
 const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
     // We map MongoDB schema to UI fallback to old Python format
@@ -92,6 +94,7 @@ export const Listings = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -133,21 +136,40 @@ export const Listings = () => {
     };
 
     const onAnalyze = (ipo) => {
+        const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+        if (!isAuth) {
+            setShowLoginModal(true);
+            return;
+        }
+
         const details = ipo.details || {};
+
+        // Robust helper to skip string "0" or falsy NaN lookups in nested structures
+        const getFloat = (val1, val2) => {
+            const num1 = parseFloat(val1);
+            if (!isNaN(num1) && num1 !== 0) return num1;
+            return parseFloat(val2) || 0;
+        };
+
+        const qibVal = getFloat(details.qib, ipo.qib);
+        const niiVal = getFloat(details.nii, ipo.nii);
+        const retailVal = getFloat(details.retail, ipo.retail);
+        const totalSubVal = getFloat(details.total_sub, qibVal + niiVal + retailVal);
+
         const p = {
-            qib: parseFloat(details.qib || ipo.qib) || 0,
-            nii: parseFloat(details.nii || ipo.nii) || 0,
-            retail: parseFloat(details.retail || ipo.retail) || 0,
-            total_sub: parseFloat(details.total_sub) || 0,
-            issue_size: parseFloat(details.issue_size || ipo.issue_size || ipo.size_cr) || 0,
-            pe_ratio: parseFloat(details.pe_ratio) || 0,
-            revenue: parseFloat(details.revenue) || 0,
-            pat: parseFloat(details.pat) || 0,
-            roe: parseFloat(details.roe) || 0,
-            roce: parseFloat(details.roce) || 0,
-            profit_margin: parseFloat(details.profit_margin) || 0,
-            revenue_growth: parseFloat(details.revenue_growth) || 15.0,
-            company_name: ipo.name || ipo.companyName,
+            qib: qibVal,
+            nii: niiVal,
+            retail: retailVal,
+            total_sub: totalSubVal,
+            issue_size: getFloat(details.issue_size, getFloat(ipo.issue_size, getFloat(ipo.size_cr, ipo.issueSize))),
+            pe_ratio: getFloat(details.pe_ratio, ipo.pe),
+            revenue: getFloat(details.revenue, ipo.revenue),
+            pat: getFloat(details.pat, ipo.pat),
+            roe: getFloat(details.roe, ipo.roe),
+            roce: getFloat(details.roce, ipo.roce),
+            profit_margin: getFloat(details.profit_margin, (ipo.revenue && ipo.pat ? (ipo.pat / ipo.revenue) * 100 : 0)),
+            revenue_growth: getFloat(details.revenue_growth, 15.0),
+            company_name: ipo.companyName || ipo.name,
             symbol: ipo.symbol,
             bse_code: ipo.bse_code,
             opening_date: ipo.opening_date || (ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ''),
@@ -399,6 +421,7 @@ export const Listings = () => {
                 </div>
             </section>
 
+            <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} featureName="advanced analysis" />
         </div>
     );
 };

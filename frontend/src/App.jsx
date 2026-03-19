@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useTheme } from './hooks/useTheme';
 import { Navbar } from './components/Navbar';
 import { TickerTape } from './components/TickerTape';
@@ -19,6 +19,11 @@ import { BlogDetail } from './pages/BlogDetail';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Profile } from './pages/Profile';
+
+const ProtectedRoute = ({ children }) => {
+  const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+  return isAuth ? children : <Navigate to="/login" replace />;
+};
 
 
 
@@ -58,7 +63,7 @@ function App() {
           <Route path="/blogs/:id" element={<BlogDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
           <Route path="*" element={<Home />} />
 

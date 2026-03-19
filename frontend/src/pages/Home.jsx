@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { NODE_API } from '../config';
 
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, AlertTriangle } from 'lucide-react';
@@ -33,7 +34,7 @@ export const Home = () => {
     useEffect(() => {
         const fetchRates = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/live-rates');
+                const res = await axios.get(`${NODE_API}/api/live-rates`);
                 const data = res.data;
                 const newIndices = [
                     { name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent.replace('%', '') || '0.00', isPositive: data['Nifty 50']?.isPositive ?? true },
@@ -49,7 +50,7 @@ export const Home = () => {
 
         const fetchFaqs = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/faqs');
+                const res = await axios.get(`${NODE_API}/api/faqs`);
                 setFaqs(res.data || []);
             } catch (err) {
                 console.error('Failed to fetch faqs for Home', err);

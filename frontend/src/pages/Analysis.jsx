@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { FASTAPI_API } from '../config';
 import { Activity, Rocket, TrendingUp, DollarSign, BarChart, CheckCircle, Info, HelpCircle, X } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = `${FASTAPI_API}`;
 
 const HelpModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
@@ -79,6 +80,16 @@ const MetricCard = ({ label, value, subtext, color, icon: Icon, progress }) => (
 export const Analysis = () => {
     const location = useLocation();
     const initialParams = location.state?.params;
+
+    const parsePrice = (price) => {
+        if (!price) return 0;
+        const num = String(price).replace(/[^\d.-]/g, '');
+        if (num.includes('-')) {
+            const parts = num.split('-');
+            return (parseFloat(parts[0]) + parseFloat(parts[1])) / 2;
+        }
+        return parseFloat(num) || 0;
+    };
 
     const [params, setParams] = useState({
         qib: 4.41, nii: 0.80, retail: 1.08, total_sub: 2.81,
@@ -385,7 +396,7 @@ export const Analysis = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="p-8 bg-gray-50 dark:bg-dark-bg/50 rounded-[2rem] border border-gray-100 dark:border-dark-border group/card hover:border-primary-500/30 transition-colors">
                                         <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">TraQ AI Prediction</p>
-                                        <h3 className="text-5xl font-black text-primary-600">+{results.listing_gain.toFixed(2)}%</h3>
+                                        <h3 className="text-5xl font-black text-primary-600">{results.listing_gain > 0 ? '+' : ''}{results.listing_gain.toFixed(2)}%</h3>
                                         <div className="mt-6 flex items-center gap-2">
                                             <div className="w-full h-1.5 bg-gray-200 dark:bg-dark-border rounded-full overflow-hidden">
                                                 <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(results.listing_gain, 100)}%` }}></div>
@@ -397,7 +408,7 @@ export const Analysis = () => {
                                         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
                                         <div className="relative z-10">
                                             <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-80">Actual Listing Gain</p>
-                                            <h3 className="text-5xl font-black">+{actualGain}%</h3>
+                                            <h3 className="text-5xl font-black">{actualGain > 0 ? '+' : ''}{actualGain}%</h3>
                                             <div className="mt-6 flex items-center gap-2">
                                                 <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
                                                     <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(actualGain, 100)}%` }}></div>
@@ -411,8 +422,8 @@ export const Analysis = () => {
                                     <div className="p-8 bg-gray-50 dark:bg-dark-bg/50 rounded-[2rem] border border-gray-100 dark:border-dark-border group/card hover:border-primary-500/30 transition-colors">
                                         <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">TraQ Range Prediction</p>
                                         <h3 className="text-4xl font-black text-primary-600">
-                                            ₹{(Number(params.issue_price || params.price || 0) * (1 + Number(results.range_min || 0) / 100)).toFixed(2)} -
-                                            ₹{(Number(params.issue_price || params.price || 0) * (1 + Number(results.range_max || 0) / 100)).toFixed(2)}
+                                            ₹{(parsePrice(params.issue_price || params.price || 0) * (1 + Number(results.range_min || 0) / 100)).toFixed(2)} -
+                                            ₹{(parsePrice(params.issue_price || params.price || 0) * (1 + Number(results.range_max || 0) / 100)).toFixed(2)}
                                         </h3>
                                         <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-wide">
                                             {results.listing_range} ({Number(results.range_min || 0).toFixed(1)}% to {Number(results.range_max || 0).toFixed(1)}%)

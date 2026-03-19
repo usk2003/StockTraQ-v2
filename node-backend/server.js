@@ -230,6 +230,26 @@ app.put('/admin/ipo/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /admin/blog/:id
+app.put('/admin/blog/:id', authenticateToken, async (req, res) => {
+  try {
+    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: 'Blog updated successfully', blog: updatedBlog });
+  } catch (error) {
+    res.status(400).json({ error: 'Update failed', details: error.message });
+  }
+});
+
+// PUT /admin/faq/:id
+app.put('/admin/faq/:id', authenticateToken, async (req, res) => {
+  try {
+    const updatedFaq = await Faq.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: 'FAQ updated successfully', faq: updatedFaq });
+  } catch (error) {
+    res.status(400).json({ error: 'Update failed', details: error.message });
+  }
+});
+
 
 // GET /api/blogs
 

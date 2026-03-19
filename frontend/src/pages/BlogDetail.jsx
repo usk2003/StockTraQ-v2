@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { Calendar, User, ArrowLeft, BookOpen } from 'lucide-react';
 
 export const BlogDetail = () => {
@@ -12,7 +13,7 @@ export const BlogDetail = () => {
     useEffect(() => {
         const fetchBlog = async () => {
             try {
-                const response = await axios.get(`http://localhost:5000/api/blogs/${id}`);
+                const response = await axios.get(`${NODE_API}/api/blogs/${id}`);
                 setBlog(response.data);
             } catch (err) {
                 setError('Failed to load the blog post.');

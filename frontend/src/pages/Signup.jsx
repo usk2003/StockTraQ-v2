@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { Mail, Lock, User, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Signup = () => {
@@ -19,7 +20,7 @@ export const Signup = () => {
         setError('');
 
         try {
-            const res = await axios.post('http://localhost:5000/api/register', { name, email, password });
+            const res = await axios.post(`${NODE_API}/api/register`, { name, email, password });
             localStorage.setItem('userToken', res.data.token);
             localStorage.setItem('userName', res.data.user.name);
             navigate('/');

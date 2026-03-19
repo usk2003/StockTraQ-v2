@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { BookOpen, Calendar, User, ArrowRight } from 'lucide-react';
 
 export const Blogs = () => {
@@ -11,7 +12,7 @@ export const Blogs = () => {
     useEffect(() => {
         const fetchBlogs = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/blogs');
+                const response = await axios.get(`${NODE_API}/api/blogs`);
                 setBlogs(response.data);
             } catch (err) {
                 setError('Failed to load blogs. Please try again later.');
@@ -104,4 +105,4 @@ export const Blogs = () => {
             </div>
         </div>
     );
-};
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Brain, Target, Binary, Cpu, BarChart3, TrendingUp, CheckCircle, AlertTriangle, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { FASTAPI_API } from '../config';
 
 export const IpoModel = () => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ export const IpoModel = () => {
 
         const fetchMetrics = async () => {
             try {
-                const response = await axios.get('http://localhost:8000/api/model-metrics');
+                const response = await axios.get(`${FASTAPI_API}/api/model-metrics`);
                 setModelsEvaluated(response.data);
             } catch (error) {
                 console.error("Error fetching model metrics:", error);

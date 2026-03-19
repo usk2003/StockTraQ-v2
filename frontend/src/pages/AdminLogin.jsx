@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { Lock, User, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 export const AdminLogin = () => {
@@ -23,7 +24,7 @@ export const AdminLogin = () => {
         setError('');
         setLoading(true);
         try {
-            const response = await axios.post('http://localhost:5000/admin/login', { username, password });
+            const response = await axios.post(`${NODE_API}/admin/login`, { username, password });
             localStorage.setItem('adminToken', response.data.token);
             localStorage.setItem('adminName', response.data.name || 'Admin');
             localStorage.removeItem('userToken');

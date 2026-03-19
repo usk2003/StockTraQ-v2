@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil } from 'lucide-react';
+import { NODE_API } from '../config';
+import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil, Search } from 'lucide-react';
 
 
 export const AdminDashboard = () => {
@@ -57,6 +58,7 @@ export const AdminDashboard = () => {
     const [editingId, setEditingId] = useState(null);
     const [faqData, setFaqData] = useState({ question: '', answer: '' });
     const [allFaqs, setAllFaqs] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
 
 
@@ -103,13 +105,13 @@ export const AdminDashboard = () => {
         try {
             const token = localStorage.getItem('adminToken');
             if (editingId) {
-                await axios.put(`http://localhost:5000/admin/ipo/${editingId}`, ipoData, {
+                await axios.put(`${NODE_API}/admin/ipo/${editingId}`, ipoData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setSuccessMsg('IPO updated successfully!');
                 setEditingId(null);
             } else {
-                await axios.post('http://localhost:5000/admin/add-ipo', ipoData, {
+                await axios.post(`${NODE_API}/admin/add-ipo`, ipoData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setSuccessMsg('IPO successfully added to database!');
@@ -151,13 +153,21 @@ export const AdminDashboard = () => {
             const token = localStorage.getItem('adminToken');
             const formattedData = {
                 ...blogData,
-                tags: blogData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+                tags: typeof blogData.tags === 'string' ? blogData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : blogData.tags
             };
             
-            await axios.post('http://localhost:5000/admin/add-blog', formattedData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSuccessMsg('Blog successfully added to database!');
+            if (editingId) {
+                await axios.put(`${NODE_API}/admin/blog/${editingId}`, formattedData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('Blog updated successfully!');
+                setEditingId(null);
+            } else {
+                await axios.post(`${NODE_API}/admin/add-blog`, formattedData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('Blog successfully added to database!');
+            }
             setBlogData({ title: '', content: '', author: '', summary: '', imageUrl: '', tags: '' });
         } catch (err) {
             setErrorMsg(err.response?.data?.error || 'Failed to add Blog. Check fields and try again.');
@@ -180,7 +190,7 @@ export const AdminDashboard = () => {
                 changes: versionData.changes.split('\n').map(c => c.trim()).filter(c => c !== '')
             };
             
-            await axios.post('http://localhost:5000/admin/add-version', formattedData, {
+            await axios.post(`${NODE_API}/admin/add-version`, formattedData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSuccessMsg('Version notes updated successfully!');
@@ -201,10 +211,18 @@ export const AdminDashboard = () => {
         
         try {
             const token = localStorage.getItem('adminToken');
-            await axios.post('http://localhost:5000/admin/add-faq', faqData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSuccessMsg('FAQ added successfully!');
+            if (editingId) {
+                await axios.put(`${NODE_API}/admin/faq/${editingId}`, faqData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('FAQ updated successfully!');
+                setEditingId(null);
+            } else {
+                await axios.post(`${NODE_API}/admin/add-faq`, faqData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMsg('FAQ added successfully!');
+            }
             setFaqData({ question: '', answer: '' });
             fetchContent(); 
         } catch (err) {
@@ -219,7 +237,7 @@ export const AdminDashboard = () => {
         if (!window.confirm('Delete this FAQ?')) return;
         try {
             const token = localStorage.getItem('adminToken');
-            await axios.delete(`http://localhost:5000/admin/faq/${id}`, {
+            await axios.delete(`${NODE_API}/admin/faq/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAllFaqs(allFaqs.filter(faq => faq._id !== id));
@@ -232,10 +250,10 @@ export const AdminDashboard = () => {
 
     const fetchContent = async () => {
         try {
-            const ongoingRes = await axios.get('http://localhost:5000/api/ipos/ongoing').catch(e => ({ data: [] }));
-            const closedRes = await axios.get('http://localhost:5000/api/ipos/closed').catch(e => ({ data: [] }));
-            const blogsRes = await axios.get('http://localhost:5000/api/blogs').catch(e => ({ data: [] }));
-            const faqsRes = await axios.get('http://localhost:5000/api/faqs').catch(e => ({ data: [] }));
+            const ongoingRes = await axios.get(`${NODE_API}/api/ipos/ongoing`).catch(e => ({ data: [] }));
+            const closedRes = await axios.get(`${NODE_API}/api/ipos/closed`).catch(e => ({ data: [] }));
+            const blogsRes = await axios.get(`${NODE_API}/api/blogs`).catch(e => ({ data: [] }));
+            const faqsRes = await axios.get(`${NODE_API}/api/faqs`).catch(e => ({ data: [] }));
 
             setAllIpos([...(ongoingRes.data || []), ...(closedRes.data || [])]);
             setAllBlogs(blogsRes.data || []);
@@ -254,7 +272,7 @@ export const AdminDashboard = () => {
     const fetchUsers = async () => {
         try {
             const token = localStorage.getItem('adminToken');
-            const res = await axios.get('http://localhost:5000/admin/users', {
+            const res = await axios.get(`${NODE_API}/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAllUsers(res.data);
@@ -274,7 +292,7 @@ export const AdminDashboard = () => {
          if (!window.confirm('Are you sure you want to delete this IPO?')) return;
          try {
              const token = localStorage.getItem('adminToken');
-             await axios.delete(`http://localhost:5000/admin/ipo/${id}`, {
+             await axios.delete(`${NODE_API}/admin/ipo/${id}`, {
                  headers: { Authorization: `Bearer ${token}` }
              });
              setSuccessMsg('IPO deleted successfully!');
@@ -290,7 +308,7 @@ export const AdminDashboard = () => {
          if (!window.confirm('Are you sure you want to delete this Blog?')) return;
          try {
              const token = localStorage.getItem('adminToken');
-             await axios.delete(`http://localhost:5000/admin/blog/${id}`, {
+             await axios.delete(`${NODE_API}/admin/blog/${id}`, {
                  headers: { Authorization: `Bearer ${token}` }
              });
              setSuccessMsg('Blog deleted successfully!');
@@ -361,7 +379,7 @@ export const AdminDashboard = () => {
     const renderAddBlogForm = () => (
         <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden animate-fade-in">
             <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary-500" /> Create New Blog Post
+                {editingId ? <Pencil className="w-5 h-5 text-yellow-500" /> : <FileText className="w-5 h-5 text-primary-500" />} {editingId ? 'Edit Blog Post' : 'Create New Blog Post'}
             </h2>
 
             <form onSubmit={handleBlogSubmit} className="grid grid-cols-1 gap-6 relative z-10">
@@ -468,15 +486,43 @@ export const AdminDashboard = () => {
 
 
 
-    const renderManageContent = () => (
-        <div className="space-y-8 animate-fade-in">
+    const renderManageContent = () => {
+        const filteredIpos = allIpos.filter(ipo => 
+            (ipo.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (ipo.symbol || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        const filteredBlogs = allBlogs.filter(blog => 
+            (blog.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (blog.content || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (blog.author || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        const filteredFaqs = allFaqs.filter(faq => 
+            (faq.question || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (faq.answer || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        return (
+            <div className="space-y-8 animate-fade-in">
+                {/* Search Bar */}
+                <div className="bg-white dark:bg-dark-card p-5 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl flex items-center gap-3">
+                    <Search className="w-6 h-6 text-primary-600" />
+                    <input 
+                        type="text" 
+                        placeholder="Search IPOs, Blogs, or FAQs..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-transparent border-none outline-none text-base text-gray-900 dark:text-white font-bold placeholder-gray-400"
+                    />
+                </div>
             {/* Manage IPOs */}
             <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-4">
                     <BarChart3 className="w-5 h-5 text-primary-500" /> Manage IPO Listings
                 </h2>
-                {allIpos.length === 0 ? (
-                    <p className="text-center text-gray-500 font-medium py-8">No IPOs found in database.</p>
+                {filteredIpos.length === 0 ? (
+                    <p className="text-center text-gray-500 font-medium py-8">No IPOs found matching search.</p>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -489,7 +535,7 @@ export const AdminDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-dark-border">
-                                {allIpos.map(ipo => (
+                                {filteredIpos.slice(0, 6).map(ipo => (
                                     <tr key={ipo._id} className="text-sm">
                                         <td className="py-4 font-bold text-gray-900 dark:text-white">{ipo.companyName}</td>
                                         <td className="py-4 text-gray-500">{ipo.symbol}</td>
@@ -540,19 +586,38 @@ export const AdminDashboard = () => {
                 <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-4">
                     <FileText className="w-5 h-5 text-purple-500" /> Manage Blog Posts
                 </h2>
-                {allBlogs.length === 0 ? (
-                    <p className="text-center text-gray-500 font-medium py-8">No Blogs found in database.</p>
+                {filteredBlogs.length === 0 ? (
+                    <p className="text-center text-gray-500 font-medium py-8">No Blogs found matching search.</p>
                 ) : (
                     <div className="space-y-4">
-                        {allBlogs.map(blog => (
+                        {filteredBlogs.slice(0, 6).map(blog => (
                             <div key={blog._id} className="flex justify-between items-center bg-gray-50 dark:bg-dark-bg p-4 rounded-xl border border-gray-100 dark:border-dark-border">
                                 <div>
                                     <h3 className="font-bold text-gray-900 dark:text-white">{blog.title}</h3>
                                     <p className="text-xs text-gray-500">By {blog.author} • {new Date(blog.createdAt).toLocaleDateString()}</p>
                                 </div>
-                                <button onClick={() => handleDeleteBlog(blog._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            setBlogData({
+                                                title: blog.title || '',
+                                                content: blog.content || '',
+                                                author: blog.author || '',
+                                                summary: blog.summary || '',
+                                                imageUrl: blog.imageUrl || '',
+                                                tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : ''
+                                            });
+                                            setEditingId(blog._id);
+                                            setActiveTab('add_blog');
+                                        }} 
+                                        className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg transition-colors"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => handleDeleteBlog(blog._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -564,26 +629,42 @@ export const AdminDashboard = () => {
                 <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-4">
                     <MessageSquare className="w-5 h-5 text-yellow-500" /> Manage FAQs
                 </h2>
-                {allFaqs.length === 0 ? (
-                    <p className="text-center text-gray-500 font-medium py-8">No FAQs found in database.</p>
+                {filteredFaqs.length === 0 ? (
+                    <p className="text-center text-gray-500 font-medium py-8">No FAQs found matching search.</p>
                 ) : (
                     <div className="space-y-4">
-                        {allFaqs.map(faq => (
+                        {filteredFaqs.slice(0, 6).map(faq => (
                             <div key={faq._id} className="flex justify-between items-start bg-gray-50 dark:bg-dark-bg p-4 rounded-xl border border-gray-100 dark:border-dark-border">
                                 <div className="max-w-[85%]">
                                     <h3 className="font-bold text-gray-900 dark:text-white text-sm">{faq.question}</h3>
                                     <p className="text-xs text-gray-500 mt-1 leading-relaxed">{faq.answer}</p>
                                 </div>
-                                <button onClick={() => handleDeleteFaq(faq._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex gap-2 shrink-0">
+                                    <button 
+                                        onClick={() => {
+                                            setFaqData({
+                                                question: faq.question || '',
+                                                answer: faq.answer || ''
+                                            });
+                                            setEditingId(faq._id);
+                                            setActiveTab('add_faq');
+                                        }} 
+                                        className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg transition-colors"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => handleDeleteFaq(faq._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
-        </div>
-    );
+            </div>
+        );
+    };
 
     const renderUsersList = () => (
         <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl animate-fade-in">
@@ -654,7 +735,7 @@ export const AdminDashboard = () => {
     const renderAddFaqForm = () => (
         <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl animate-fade-in">
             <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-6 flex items-center gap-2">
-                <Plus className="w-6 h-6 text-primary-500" /> Add New FAQ
+                {editingId ? <Pencil className="w-6 h-6 text-yellow-500" /> : <Plus className="w-6 h-6 text-primary-500" />} {editingId ? 'Edit FAQ' : 'Add New FAQ'}
             </h2>
             <form onSubmit={handleFaqSubmit} className="space-y-6">
                 <div>
@@ -767,7 +848,23 @@ export const AdminDashboard = () => {
                                 {tabs.map(tab => (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => {
+                                            setActiveTab(tab.id);
+                                            setEditingId(null);
+                                            // Reset forms to add-mode defaults
+                                            if (tab.id === 'add_ipo') {
+                                                setIpoData({
+                                                    companyName: '', symbol: '', issueSize: '', priceBand: '',
+                                                    openDate: '', closeDate: '', gmp: '', qib: '', nii: '',
+                                                    retail: '', drhpUrl: '', listingPrice: '', pe: '',
+                                                    revenue: '', pat: '', roe: '', roce: ''
+                                                });
+                                            } else if (tab.id === 'add_blog') {
+                                                setBlogData({ title: '', content: '', author: '', summary: '', imageUrl: '', tags: '' });
+                                            } else if (tab.id === 'add_faq') {
+                                                setFaqData({ question: '', answer: '' });
+                                            }
+                                        }}
                                         className={`w-full flex items-center justify-between p-4 rounded-xl font-bold transition-all ${
                                             activeTab === tab.id 
                                             ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' 

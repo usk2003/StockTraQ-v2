@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # 🟢 1. Node.js Administration & Auth Server (Port 5000)
+  node-backend:
+    build: ./node-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb+srv://user:pass@cluster.mongodb.net/stocktraq}
+    restart: always
+
+  # 🟢 2. FastAPI Intelligence / ML Analyzer Server (Port 8000)
+  fastapi-backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    restart: always
+
+  # 🟢 3. Frontend Bundle Static Serve (Port 80)
+  # IMPORTANT: Change 'localhost' to your Cloud IP or Domain name BEFORE building
+  # because React axios submits queries from the Browser client perspective externally!
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_NODE_URL=http://localhost:5000
+        - VITE_FASTAPI_URL=http://localhost:8000
+    ports:
+      - "80:80"
+    depends_on:
+      - node-backend
+      - fastapi-backend
+    restart: always

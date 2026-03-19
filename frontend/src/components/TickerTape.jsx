@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { TrendingUp, TrendingDown, Circle } from 'lucide-react';
 
 export const TickerTape = () => {
@@ -11,7 +12,7 @@ export const TickerTape = () => {
     useEffect(() => {
         const fetchRates = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/live-rates');
+                const res = await axios.get(`${NODE_API}/api/live-rates`);
                 const data = res.data;
                 const newItems = [
                     { type: 'index', name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent || '0%' },

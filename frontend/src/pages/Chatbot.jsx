@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LoginPromptModal } from '../components/LoginPromptModal';
 import axios from 'axios';
+import { FASTAPI_API } from '../config';
 import { Send, User, Bot, Upload, Paperclip, X, FileText, Activity, Terminal, MessageSquare, Shield, AlertTriangle, BookOpen, Search, Code } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = `${FASTAPI_API}`;
 
 export const Chatbot = () => {
+    const [showLoginModal, setShowLoginModal] = useState(false);
     const [messages, setMessages] = useState([
         { role: 'bot', content: 'Hello! I am TraQ Bot, your IPO intelligence assistant. Upload a DRHP/RHP file to get started, and I can answer any questions based on its contents.' }
     ]);
@@ -37,6 +40,12 @@ export const Chatbot = () => {
     }, [messages]);
 
     const onFileSelected = async (selectedFile) => {
+        const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+        if (!isAuth) {
+            setShowLoginModal(true);
+            return;
+        }
+
         if (!selectedFile) return;
         if (selectedFile.type !== 'application/pdf') {
             alert('Please upload a PDF file.');
@@ -81,6 +90,12 @@ export const Chatbot = () => {
 
     const handleSend = async (e) => {
         e.preventDefault();
+        const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+        if (!isAuth) {
+            setShowLoginModal(true);
+            return;
+        }
+
         if (!input.trim() || loading) return;
 
         const userMsg = input.trim();
@@ -320,6 +335,7 @@ export const Chatbot = () => {
                     </div>
                 </div>
             </div>
+            <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} featureName="Insight TraQ" />
         </div>
     );
 };

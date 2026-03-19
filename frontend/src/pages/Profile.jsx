@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { User, Mail, Calendar, LogOut, ArrowLeft, LoaderCircle } from 'lucide-react';
 
 export const Profile = () => {
@@ -18,7 +19,7 @@ export const Profile = () => {
             }
 
             try {
-                const res = await axios.get('http://localhost:5000/api/me', {
+                const res = await axios.get(`${NODE_API}/api/me`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setUser(res.data);

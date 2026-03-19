@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import axios from 'axios';
+import { NODE_API } from '../config';
 import { TrendingUp, Twitter, Linkedin, Github, Instagram, Mail, Phone, MapPin, ArrowUpRight, Home, Rocket, MessageSquare, BookOpen } from 'lucide-react';
 
 
@@ -19,7 +20,7 @@ export const Footer = () => {
     useEffect(() => {
         const fetchLatestVersion = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/version/latest');
+                const res = await axios.get(`${NODE_API}/api/version/latest`);
                 setLatestVersion(res.data.version);
                 setVersionChanges(res.data.changes);
             } catch (err) {
