@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { NODE_API } from '../config';
+import { NODE_API } from '../../config';
 import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil, Search } from 'lucide-react';
 
 

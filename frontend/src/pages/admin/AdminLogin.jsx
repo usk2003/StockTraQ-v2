@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { NODE_API } from '../config';
+import { NODE_API } from '../../config';
 import { Lock, User, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 export const AdminLogin = () => {
