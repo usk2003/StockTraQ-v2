@@ -83,7 +83,8 @@ An overview detailing responsibilities of core directory paths:
 ├── frontend/                 # React 18 Client structure
 │   ├── src/
 │   │   ├── components/       # Reusable Contexts (Analysis forms, live widgets)
-│   │   └── pages/            # View managers (Dashboard, Listings, Auth grids)
+│   │   └── pages/            # View managers (Listings, Auth grids)
+│   │       └── admin/        # Secured Administrative Dashboards (Dashboard, Login)
 │
 ├── models/ / models_v2/      # Serialized pickle arrays holding trained weights
 ├── live_price_fetcher.py     # Independent script pulling standalone pricing pipelines
@@ -118,6 +119,8 @@ An overview detailing responsibilities of core directory paths:
 | `/api/register` | `POST` | No | Distributes standard user identity pipelines natively. |
 | `/admin/add-ipo` | `POST` | Yes (JWT) | Secure database Insertion distribution locked via route auths. |
 | `/admin/ipo/:id`| `DELETE`| Yes (JWT) | Protective deletion execution lock securing database updates. |
+| `/admin/add-blog`| `POST` | Yes (JWT) | Inserts Blog metrics distributing markdown layouts natively. |
+| `/admin/add-faq` | `POST` | Yes (JWT) | Appends support Live Query guides to secure pipeline locks. |
 | `/api/live-rates`| `GET` | No | Executes children process spawning index aggregator utilities. |
 
 ---

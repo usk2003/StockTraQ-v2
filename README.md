@@ -3,8 +3,6 @@
 
 Stock TraQ is a professional-grade platform designed to provide deep insights into IPO performance. It leverages advanced machine learning models to predict listing gains and audit financial health, while maintaining a comprehensive archive of historical IPOs.
 
-![Stock TraQ Architecture](ARCHITECTURE.svg)
-
 ---
 
 ## Why StockTraQ is Unique (vs. General AI Chatbots & Tools)
@@ -51,8 +49,22 @@ While generative AI models (like ChatGPT) are suited for text synthesis and gene
 ### Prerequisites
 
 - Node.js (v16+)
-- Python (v3.9+)
-- MongoDB (Running locally on `mongodb://localhost:27017/stocktraq_admin`)
+- Python (v3.10+)
+- MongoDB (Local or via Docker)
+- **Docker & Docker-Compose** (Recommended for easiest setup)
+
+---
+
+### 🟢 Option A: Run with Docker (Fastest Method)
+If you have Docker installed, simply run the ecosystem with:
+```bash
+docker-compose up --build
+```
+*Note: This automatically orchestrates the Node.js API, FastAPI ML engine, and the Client bundle.*
+
+---
+
+### 🔵 Option B: Manual Setup Alternative
 
 ### 1. Database Setup
 Ensure MongoDB is running and contains the setup tables for `ongoing_ipos`, `closed_ipos`, and `master_db`.
