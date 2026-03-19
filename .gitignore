@@ -16,8 +16,7 @@ out/
 
 # Environment
 .env
-.env.local
-.env.*.local
+.env.*
 db_diag.txt
 db_keys.txt
 master_db_sample.json
