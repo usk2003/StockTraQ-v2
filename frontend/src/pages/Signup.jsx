@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { NODE_API } from '../config';
 import { Mail, Lock, User, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Signup = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || '/';
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -23,7 +25,7 @@ export const Signup = () => {
             const res = await axios.post(`${NODE_API}/api/register`, { name, email, password });
             localStorage.setItem('userToken', res.data.token);
             localStorage.setItem('userName', res.data.user.name);
-            navigate('/');
+            navigate(from);
             window.location.reload(); // Force navbar refresh
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');

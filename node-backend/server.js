@@ -43,6 +43,7 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret', (err, user) => {
     if (err) return res.sendStatus(403);
+    if (!user.adminId) return res.sendStatus(403); // Strictly require Admin identity
     req.user = user;
     next();
   });

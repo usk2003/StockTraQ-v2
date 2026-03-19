@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { NODE_API } from '../config';
 import { Mail, Lock, LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || '/';
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +24,7 @@ export const Login = () => {
             const res = await axios.post(`${NODE_API}/api/login`, { email, password });
             localStorage.setItem('userToken', res.data.token);
             localStorage.setItem('userName', res.data.user.name);
-            navigate('/');
+            navigate(from);
             window.location.reload(); // Force navbar refresh
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed. Please check your credentials.');

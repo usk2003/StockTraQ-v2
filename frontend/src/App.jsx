@@ -25,6 +25,11 @@ const ProtectedRoute = ({ children }) => {
   return isAuth ? children : <Navigate to="/login" replace />;
 };
 
+const ProtectedAdminRoute = ({ children }) => {
+  const isAdminAuth = localStorage.getItem('adminToken');
+  return isAdminAuth ? children : <Navigate to="/admin" replace />;
+};
+
 
 
 
@@ -56,7 +61,7 @@ function App() {
           <Route path="/insight" element={<Chatbot />} />
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/blogs" element={<Blogs />} />

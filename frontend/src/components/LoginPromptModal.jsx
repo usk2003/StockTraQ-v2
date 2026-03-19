@@ -6,7 +6,7 @@ export const LoginPromptModal = ({ isOpen, onClose, featureName = "analysis" }) 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/50 dark:bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
             <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-2xl max-w-sm w-full space-y-6 text-center animate-scale-up" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-center flex-col items-center">
                     <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-full mb-4">
@@ -20,10 +20,10 @@ export const LoginPromptModal = ({ isOpen, onClose, featureName = "analysis" }) 
                 </p>
 
                 <div className="space-y-3">
-                    <Link to="/login" className="block w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-500/20 text-sm">
+                    <Link to="/login" state={{ from: window.location.pathname }} className="block w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-primary-500/20 text-sm">
                         Login Now
                     </Link>
-                    <Link to="/signup" className="block w-full py-3 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-dark-card text-gray-900 dark:text-white font-bold rounded-xl transition-colors text-sm">
+                    <Link to="/signup" state={{ from: window.location.pathname }} className="block w-full py-3 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-dark-card text-gray-900 dark:text-white font-bold rounded-xl transition-colors text-sm">
                         Sign Up
                     </Link>
                 </div>
