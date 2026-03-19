@@ -31,6 +31,11 @@ for name, symbol in tickers.items():
                 prev_close = price # Fake prev close if not enough data
                 
         if price and prev_close:
+            # Scale Gold to 1 gram (GoldBees tracks 0.01g)
+            if name == "Gold":
+                price = price * 100
+                prev_close = prev_close * 100
+                
             change = price - prev_close
             change_percent = (change / prev_close) * 100 if prev_close != 0 else 0
             

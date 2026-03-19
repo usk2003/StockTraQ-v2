@@ -37,15 +37,10 @@ export const Footer = () => {
     }, []);
 
     return (
-        <footer className="relative bg-gradient-to-b from-gray-50 to-white dark:from-dark-bg dark:to-dark-card text-gray-900 dark:text-gray-100 py-20 px-4 border-t border-gray-100 dark:border-dark-border overflow-hidden">
-            {/* Soft Ambient Glows */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 select-none">
-                <div className="absolute -top-32 -left-20 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
-            </div>
+        <footer className="relative bg-transparent text-gray-900 dark:text-gray-100 py-10 px-4 overflow-hidden">
 
             <div className="max-w-7xl mx-auto relative z-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 pb-12 border-b border-gray-100 dark:border-dark-border/40">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 pb-12">
                     
                     {/* Brand Section (5 Columns) */}
                     <div className="lg:col-span-5 space-y-6">
@@ -98,7 +93,7 @@ export const Footer = () => {
                                 </li>
                             ))}
 
-                            <li className="pt-2 border-t border-gray-100 dark:border-dark-border/20 mt-2">
+                            <li className="pt-2 mt-2">
                                 <button onClick={() => setShowTeamModal(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1 group font-bold focus:outline-none">
                                     Meet Our Team <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all text-primary-500" />
                                 </button>

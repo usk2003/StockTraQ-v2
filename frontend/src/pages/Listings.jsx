@@ -98,11 +98,17 @@ export const Listings = () => {
             try {
                 const ongoingRes = await axios.get(`${API_BASE}/ongoing`).catch(e => ({ data: [] }));
                 const closedRes = await axios.get(`${API_BASE}/closed`).catch(e => ({ data: [] }));
-                const bestRes = await axios.get(`${API_BASE}/best-listed`).catch(e => ({ data: [] }));
+                
+                const sortedClosed = (closedRes.data || []).sort((a, b) => {
+                    const dateA = a.closeDate ? Date.parse(a.closeDate) : 0;
+                    const dateB = b.closeDate ? Date.parse(b.closeDate) : 0;
+                    return dateB - dateA;
+                });
 
                 setOngoing(ongoingRes.data || []);
-                setClosed(closedRes.data || []);
-                setBestListed(bestRes.data || []);
+                setClosed(sortedClosed);
+                // Slice remainder elements ensuring different list contents
+                setBestListed(sortedClosed.slice(6, 12));
             } catch (err) {
                 console.error('Fetch failed', err);
             }
@@ -160,7 +166,7 @@ export const Listings = () => {
     );
 
     return (
-        <div className="py-32 px-4 max-w-7xl mx-auto flex flex-col animate-fade-in relative">
+        <div className="py-20 px-4 max-w-7xl mx-auto flex flex-col space-y-16 animate-fade-in relative">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-10">
@@ -296,14 +302,14 @@ export const Listings = () => {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {closed.map(ipo => (
+                    {closed.slice(0, 6).map(ipo => (
                         <IPOCard key={ipo.symbol} ipo={ipo} isClosed={true} onAnalyze={onAnalyze} />
                     ))}
                 </div>
             </section>
 
             {/* Section 3: Search & Re-Analyze */}
-            <section className="space-y-8 bg-gray-50/50 dark:bg-dark-card/20 -mx-4 px-4 py-20 border-y border-gray-100 dark:border-dark-border">
+            <section className="space-y-8">
                 <div className="max-w-7xl mx-auto space-y-12">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-visible">
                         <div className="flex items-center gap-4">
@@ -341,8 +347,10 @@ export const Listings = () => {
                                             className="p-6 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-3xl shadow-sm cursor-pointer hover:border-primary-500 hover:shadow-xl transition-all flex justify-between items-center group"
                                         >
                                             <div className="flex-1 min-w-0 pr-4">
-                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 truncate">{res.name}</h4>
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Listed: {res.listing_date}</p>
+                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 truncate">{res.companyName || res.name}</h4>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                                    Listed: {res.listing_date || (res.closeDate ? new Date(res.closeDate).toLocaleDateString() : 'N/A')}
+                                                </p>
                                             </div>
                                             <div className="text-right">
                                                 <p className={`text-lg font-black ${res.gain > 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -360,7 +368,7 @@ export const Listings = () => {
                             <div className="space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
                                     <TrendingUp className="w-4 h-4 text-primary-600" />
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Past Best Listed IPOs</h3>
+                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Explore Past IPOs</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {bestListed.map((res) => (
@@ -371,8 +379,10 @@ export const Listings = () => {
                                         >
                                             <div className="absolute top-0 right-0 p-2 bg-yellow-400 text-[8px] font-black text-white uppercase rounded-bl-xl tracking-tighter">Top Performer</div>
                                             <div className="flex-1 min-w-0 pr-4">
-                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 truncate">{res.name}</h4>
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Listed: {res.listing_date}</p>
+                                                <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 truncate">{res.companyName || res.name}</h4>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                                    Listed: {res.listing_date || (res.closeDate ? new Date(res.closeDate).toLocaleDateString() : 'N/A')}
+                                                </p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-lg font-black text-green-500">

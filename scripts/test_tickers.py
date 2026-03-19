@@ -1,33 +1,35 @@
 import yfinance as yf
-import json
+import sys
 
+def search_ticker(query):
+    try:
+        # yfinance doesn't have a direct search API in the main package easily
+        # but we can try making a query or reading Tickers
+        print(f"Searching for {query}...")
+        ticker = yf.Ticker(query)
+        info = ticker.info
+        if info:
+            print(f"FOUND: {query} - {info.get('longName')}")
+            return True
+    except Exception as e:
+        print(f"FAILED: {query} - {e}")
+    return False
+
+# Test potential tickers
 tickers = [
-    "GOLDBEES.NS",   # Nippon India ETF Gold BeES
-    "SETFGOLD.NS",   # SBI ETF Gold
-    "SILVERBEES.NS", # Nippon India ETF Silver BeES
-    "^BSEIPO",       # Testing again just in case
-    "^BSESN",        # Sensex
-    "^NSEI"          # Nifty 50
+    "^BSEIPO", "BSEIPO", "BSEIPO.BO", "^BSEDII", "^BSEDII.BO",
+    "NIFTYIPO.NS", "NIFTY_IPO.NS", "^NSEIPO", "^NSEIPO.NS"
 ]
 
-results = {}
+for t in tickers:
+    search_ticker(t)
 
-for ticker_symbol in tickers:
-    try:
-        ticker = yf.Ticker(ticker_symbol)
-        info = ticker.info
-        price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('ask') or info.get('bid')
-        if not price:
-             hist = ticker.history(period="1d")
-             if not hist.empty:
-                 price = hist['Close'].iloc[-1]
-        
-        results[ticker_symbol] = {
-            "price": price,
-            "name": info.get('shortName', 'N/A'),
-            "currency": info.get('currency', 'N/A')
-        }
-    except Exception as e:
-        results[ticker_symbol] = {"error": str(e)}
+# Also check GOLDBEES and SILVERBEES info to see if NAV/Multiplier is there
+gold = yf.Ticker("GOLDBEES.NS")
+print("\nGOLDBEES Info:")
+try:
+    print(gold.info)
+except:
+    print("No info")
 
-print(json.dumps(results, indent=2))
+sys.exit(0)

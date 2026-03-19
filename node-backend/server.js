@@ -20,6 +20,7 @@ const Blog = require('./models/Blog');
 const Version = require('./models/Version');
 const User = require('./models/User');
 const Faq = require('./models/Faq');
+const LiveRate = require('./models/LiveRate');
 const bcrypt = require('bcryptjs');
 const { mongo } = require('mongoose'); // Just for safety if needed
 
@@ -308,6 +309,32 @@ app.get('/api/ipos/closed', async (req, res) => {
   }
 });
 
+// GET /api/ipos/search
+app.get('/api/ipos/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json([]);
+    const ipos = await Ipo.find({
+      companyName: { $regex: q, $options: 'i' }
+    }).limit(10);
+    res.json(ipos);
+  } catch (error) {
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// GET /api/ipos/best-listed
+app.get('/api/ipos/best-listed', async (req, res) => {
+  try {
+    // Sort by GMP descending as anchor for high performers
+    const ipos = await Ipo.find().sort({ gmp: -1 }).limit(6);
+    res.json(ipos);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch best listed' });
+  }
+});
+
+
 // Seed admin script (development purpouse)
 app.post('/admin/setup', async (req, res) => {
   try {
@@ -327,40 +354,61 @@ app.post('/admin/setup', async (req, res) => {
 // GET /api/live-rates
 // Fetch live prices for indices and commodities
 app.get('/api/live-rates', async (req, res) => {
-  const { spawn } = require('child_process');
-  const path = require('path');
-  
-  // Path to script which is in the root directory (one level up from node-backend)
-  const scriptPath = path.join(__dirname, '..', 'fetch_indices.py');
-  
-  // Execute python script
+  try {
+    const rates = await LiveRate.find();
+    const formatted = {};
+    rates.forEach(r => {
+      formatted[r.name] = { 
+        value: r.value, 
+        change: r.change, 
+        changePercent: r.changePercent, 
+        isPositive: r.isPositive 
+      };
+    });
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch live rates from DB' });
+  }
+});
+
+// Background rate fetcher
+const { spawn } = require('child_process');
+const path = require('path');
+
+async function fetchAndStoreRates() {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'fetch_indices.py');
   const pythonProcess = spawn('python', [scriptPath]);
   
   let dataString = '';
-  let errorString = '';
+  pythonProcess.stdout.on('data', (data) => dataString += data.toString());
   
-  pythonProcess.stdout.on('data', (data) => {
-    dataString += data.toString();
-  });
-  
-  pythonProcess.stderr.on('data', (data) => {
-    errorString += data.toString();
-  });
-  
-  pythonProcess.on('close', (code) => {
-    if (code !== 0) {
-      console.error(`Python script exited with code ${code}. Error: ${errorString}`);
-      return res.status(500).json({ error: 'Failed to fetch live rates', details: errorString });
-    }
+  pythonProcess.on('close', async (code) => {
+    if (code !== 0) return;
     try {
       const parsedData = JSON.parse(dataString);
-      res.json(parsedData);
+      for (const [name, data] of Object.entries(parsedData)) {
+        await LiveRate.findOneAndUpdate(
+          { name },
+          { 
+            value: data.value, 
+            change: data.change, 
+            changePercent: data.changePercent, 
+            isPositive: data.isPositive,
+            updatedAt: Date.now() 
+          },
+          { upsert: true, new: true }
+        );
+      }
     } catch (e) {
-      console.error('Failed to parse Python output:', dataString);
-      res.status(500).json({ error: 'Failed to parse live rates data' });
+      // Fail silently for background job to avoid logs clutter
     }
   });
-});
+}
+
+// Run every 1 minute
+setInterval(fetchAndStoreRates, 60000);
+// Run once on startup
+setTimeout(fetchAndStoreRates, 5000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

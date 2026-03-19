@@ -123,7 +123,7 @@ async def analyze_ipo(params: AnalysisParams):
                 # Use absolute path for fetcher
                 curr_dir = os.path.dirname(os.path.abspath(__file__))
                 root_dir = os.path.dirname(curr_dir)
-                fetcher_path = os.path.join(root_dir, "live_price_fetcher.py")
+                fetcher_path = os.path.join(root_dir, "scripts", "live_price_fetcher.py")
                 
                 cmd = [sys.executable, fetcher_path, "--json"]
                 if params.symbol: cmd.extend(["--symbol", params.symbol])

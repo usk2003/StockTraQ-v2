@@ -67,7 +67,7 @@ export const Home = () => {
     return (
         <div className="animate-fade-in space-y-16">
             {/* Hero Section */}
-            <section className="relative pt-32 pb-20 px-4">
+            <section className="relative pt-24 pb-12 px-4">
                 <div className="max-w-7xl mx-auto text-center space-y-8">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-bold tracking-wide uppercase">
                         <span className="relative flex h-3 w-3">
@@ -141,7 +141,7 @@ export const Home = () => {
             </section>
 
             {/* How It Works Section */}
-            <section className="px-4 py-8 border-t border-gray-100 dark:border-dark-border">
+            <section className="px-4 py-8">
                 <div className="max-w-7xl mx-auto space-y-10">
                     <div className="text-center">
                         <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">How StockTraQ Works</h2>
@@ -176,7 +176,7 @@ export const Home = () => {
 
             {/* Our Story System / Advantages Section */}
             <section className="px-4 py-12 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-dark-card/10">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center border-t border-gray-100 dark:border-dark-border pt-16">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center pt-16">
                     <div className="space-y-6">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold uppercase tracking-wider">
                              Our Story & Vision
@@ -218,7 +218,7 @@ export const Home = () => {
             </section>
 
             {/* FAQ Section */}
-            <section className="px-4 py-16 border-t border-gray-100 dark:border-dark-border">
+            <section className="px-4 py-16">
                 <div className="max-w-4xl mx-auto space-y-12">
                      <div className="text-center">
                          <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Frequently Asked Questions</h2>
