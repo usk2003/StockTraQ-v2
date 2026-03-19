@@ -6,8 +6,8 @@ export const LoginPromptModal = ({ isOpen, onClose, featureName = "analysis" }) 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/50 dark:bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
-            <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-2xl max-w-sm w-full space-y-6 text-center animate-scale-up" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 dark:bg-black/50 animate-fade-in" onClick={onClose}>
+            <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/20 dark:border-dark-border shadow-2xl max-w-sm w-full space-y-6 text-center animate-scale-up" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-center flex-col items-center">
                     <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-full mb-4">
                         <AlertCircle className="w-10 h-10 text-primary-600" />
