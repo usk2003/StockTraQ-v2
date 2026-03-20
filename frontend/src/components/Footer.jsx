@@ -3,14 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import axios from 'axios';
 import { NODE_API } from '../config';
-import { TrendingUp, Twitter, Linkedin, Github, Instagram, Mail, Phone, MapPin, ArrowUpRight, Home, Rocket, MessageSquare, BookOpen } from 'lucide-react';
+import { TrendingUp, Twitter, Linkedin, Github, Instagram, Mail, Phone, MapPin, ArrowUpRight, Home, Rocket, MessageSquare, BookOpen, Eye, Globe, PieChart, Users } from 'lucide-react';
+import { ContactModal } from './ContactModal';
 
 
 export const Footer = () => {
     const [showVersionModal, setShowVersionModal] = useState(false);
     const [latestVersion, setLatestVersion] = useState('');
     const [versionChanges, setVersionChanges] = useState([]);
-    const [showTeamModal, setShowTeamModal] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
     const [clickCount, setClickCount] = useState(0);
     const [lastClick, setLastClick] = useState(0);
     const navigate = useNavigate();
@@ -41,10 +42,13 @@ export const Footer = () => {
         <footer className="relative bg-transparent text-gray-900 dark:text-gray-100 py-10 px-4 overflow-hidden">
 
             <div className="max-w-7xl mx-auto relative z-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 pb-12">
+
                     
-                    {/* Brand Section (5 Columns) */}
-                    <div className="lg:col-span-5 space-y-6">
+                    {/* Brand Section (2 columns) */}
+                    <div className="lg:col-span-2 space-y-6">
+
+
                         <div className="flex items-center gap-4">
                             <img src="/logo.svg" alt="Stock TraQ Logo" className="h-10 w-auto hover:scale-105 transition-transform" />
                             <h1 className="text-2xl font-black tracking-tighter">
@@ -55,32 +59,38 @@ export const Footer = () => {
                             Empowering investors with deep machine learning insights and real-time primary market intelligence. Stop guessing, start auditing.
                         </p>
                         <div className="flex items-center gap-3">
-                            {[
-                                { icon: Twitter, link: '#' },
-                                { icon: Linkedin, link: '#' },
-                                { icon: Instagram, link: '#' },
-                                { icon: Github, link: '#' },
-                            ].map((social, i) => (
-                                <a
-                                    key={i}
-                                    href={social.link}
-                                    className="p-2 bg-gray-50 dark:bg-dark-card rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all transform hover:-translate-y-1 shadow-sm border border-gray-100/50 dark:border-dark-border/10"
-                                >
-                                    <social.icon className="w-4 h-4" />
-                                </a>
-                            ))}
+                            <a
+                                href="https://github.com/usk2003/StockTraQ-v2"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 px-3 bg-gray-50 dark:bg-dark-card rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-100/50 dark:hover:bg-primary-900/10 transition-all transform hover:-translate-y-1 shadow-sm border border-gray-100/50 dark:border-dark-border/10 flex items-center gap-2 text-xs font-black uppercase tracking-wider"
+                            >
+                                <Github className="w-4 h-4 text-primary-500" />
+                                <span>GitHub</span>
+                            </a>
+
+                            <Link
+                                to="/team"
+                                className="p-2 px-3 bg-gray-50 dark:bg-dark-card rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-100/50 dark:hover:bg-primary-900/10 transition-all transform hover:-translate-y-1 shadow-sm border border-gray-100/50 dark:border-dark-border/10 flex items-center gap-2 text-xs font-black uppercase tracking-wider"
+                            >
+                                <Users className="w-4 h-4 text-primary-500" />
+                                <span>Meet Our Team</span>
+                            </Link>
                         </div>
+
                     </div>
 
-                    {/* Quick Links (3 Columns) */}
-                    <div className="lg:col-span-3 lg:border-l border-gray-100 dark:border-dark-border/10 lg:pl-8 space-y-6">
+                    {/* Navigation (1 column) */}
+                    <div className="lg:col-span-1 lg:border-l border-gray-100 dark:border-dark-border/10 lg:pl-8 space-y-6">
+
+
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Navigation</h3>
                         <ul className="space-y-3">
                             {[
                                 { name: 'Market Home', path: '/', icon: Home },
                                 { name: 'IPO TraQ', path: '/ipo', icon: Rocket },
                                 { name: 'Insight TraQ', path: '/insight', icon: MessageSquare },
-                                { name: 'Blogs & Insights', path: '/blogs', icon: BookOpen },
+                                { name: 'Blogs', path: '/blogs', icon: BookOpen },
                             ].map((item) => (
                                 <li key={item.path}>
                                     <Link
@@ -93,54 +103,75 @@ export const Footer = () => {
                                     </Link>
                                 </li>
                             ))}
+                        </ul>
+                    </div>
 
-                            <li className="pt-2 mt-2">
-                                <button onClick={() => setShowTeamModal(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1 group font-bold focus:outline-none">
-                                    Meet Our Team <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all text-primary-500" />
+                    {/* Upcoming Features (1 column) */}
+                    <div className="lg:col-span-1 lg:border-l border-gray-100 dark:border-dark-border/10 lg:pl-8 space-y-6">
+
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Coming Soon</h3>
+                        <ul className="space-y-3">
+                            {[
+                                { name: 'Equi TraQ', path: '/roadmap', icon: TrendingUp },
+                                { name: 'Watch TraQ', path: '/roadmap', icon: Eye },
+                                { name: 'SME Ipo TraQ', path: '/roadmap', icon: Globe },
+                                { name: 'Fund TraQ', path: '/roadmap', icon: PieChart }
+                            ].map((feat) => (
+                                <li key={feat.name}>
+                                    <Link to={feat.path} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2 group font-medium">
+                                        <feat.icon className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors" />
+                                        <span>{feat.name}</span>
+                                        <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 translate-y-0.5 group-hover:translate-y-0 transition-all font-bold ml-auto" />
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Connect (1 column) */}
+                    <div className="lg:col-span-1 lg:border-l border-gray-100 dark:border-dark-border/10 lg:pl-8 space-y-6">
+
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Connect</h3>
+                        <ul className="space-y-3">
+                            <li className="flex">
+                                <a href="mailto:stocktraq@gmail.com" className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2 group font-medium w-full">
+                                    <Mail className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors shrink-0" />
+                                    <span>stocktraq@gmail.com</span>
+                                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 translate-y-0.5 group-hover:translate-y-0 transition-all font-bold ml-auto" />
+                                </a>
+                            </li>
+                            <li className="flex">
+                                <a href="tel:+9118008727" className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2 group font-medium w-full">
+                                    <Phone className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors shrink-0" />
+                                    <span>+91 9871234560</span>
+                                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 translate-y-0.5 group-hover:translate-y-0 transition-all font-bold ml-auto" />
+                                </a>
+                            </li>
+                            <li className="flex">
+                                <div className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2 font-medium">
+                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                                    <span className="leading-relaxed">
+                                        Hyderabad - 500018, IN
+                                    </span>
+                                </div>
+                            </li>
+                            <li className="flex">
+                                <button onClick={() => setShowContactModal(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2 group font-bold w-full text-left">
+                                    <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors shrink-0" />
+                                    <span>Contact Us</span>
+                                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 translate-y-0.5 group-hover:translate-y-0 transition-all text-primary-500 font-bold ml-auto" />
                                 </button>
                             </li>
                         </ul>
                     </div>
 
-                    {/* Contact Info (4 Columns) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Connect</h3>
-                        <ul className="space-y-4">
-                            <li className="flex">
-                                <a href="mailto:stocktraq@gmail.com" className="flex items-center gap-3 group">
-                                    <div className="p-2 bg-gray-50 dark:bg-dark-card rounded-xl group-hover:bg-primary-50 dark:group-hover:bg-primary-900/10 transition-colors border border-gray-100/50 dark:border-dark-border/10">
-                                        <Mail className="w-4 h-4 text-primary-600" />
-                                    </div>
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-primary-600 transition-colors font-medium">stocktraq@gmail.com</span>
-                                </a>
-                            </li>
-                            <li className="flex">
-                                <a href="tel:+9118008727" className="flex items-center gap-3 group">
-                                    <div className="p-2 bg-gray-50 dark:bg-dark-card rounded-xl group-hover:bg-primary-50 dark:group-hover:bg-primary-900/10 transition-colors border border-gray-100/50 dark:border-dark-border/10">
-                                        <Phone className="w-4 h-4 text-primary-600" />
-                                    </div>
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-primary-600 transition-colors font-medium">+91 1800-STOCK-TRAQ</span>
-                                </a>
-                            </li>
-                            <li className="flex">
-                                <div className="flex items-start gap-3 group">
-                                    <div className="p-2 bg-gray-50 dark:bg-dark-card rounded-xl border border-gray-100/50 dark:border-dark-border/10">
-                                        <MapPin className="w-4 h-4 text-primary-600" />
-                                    </div>
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                        Financial District, Gachibowli<br />
-                                        Hyderabad - 500032, IN
-                                    </span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
 
                 </div>
 
                 {/* Unified Subfooter Bottom */}
-                <div className="mt-8 space-y-4 px-4 pb-8">
-                    <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-2 text-[10px] sm:text-xs text-gray-400 font-black uppercase tracking-widest text-center">
+                <div className="space-y-4 px-4 pb-8">
+                    <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-2 text-[10px] sm:text-xs text-gray-400 font-black uppercase tracking-widest text-center w-full">
+
                         <Link to="/privacy" className="hover:text-primary-600 transition-colors">Privacy Policy</Link>
                         <span className="text-gray-300 dark:text-gray-700">|</span>
                         <Link to="/terms" className="hover:text-primary-600 transition-colors">Terms and Conditions</Link>
@@ -150,7 +181,8 @@ export const Footer = () => {
                         </button>
                     </div>
 
-                    <div className="flex justify-center text-[10px] sm:text-xs text-gray-400 font-black uppercase tracking-widest">
+                    <div className="flex justify-center text-[10px] sm:text-xs text-gray-400 font-black uppercase tracking-widest w-full">
+
                         <span 
                             onClick={() => {
                                 const now = Date.now();
@@ -195,54 +227,9 @@ export const Footer = () => {
                     </div>
                 </div>
             )}
-
-            {/* Team Modal */}
-            {showTeamModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowTeamModal(false)}>
-                    <div className="bg-white dark:bg-dark-bg p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-6 animate-scale-up" onClick={e => e.stopPropagation()}>
-                        <div className="relative h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-600/20 to-purple-600/20 flex items-center justify-center">
-                            <img src="/team_illustration.png" alt="Our Team Illustration" className="h-full object-contain mix-blend-multiply dark:mix-blend-normal opacity-90" />
-                        </div>
-                        <div className="space-y-3">
-                            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">About StockTraQ</h3>
-                            <p className="text-xs font-bold text-primary-600 uppercase tracking-widest">The Story Behind the Vision</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                We were students investing our pocket money in the stock market. Like most beginners, due to limited financial knowledge, we followed social media tips and GMP metrics, leading to an investment loss on an IPO entry. 
-                                Realizing the knowledge gap, we adopted traditional analysis structures like breaking down 400+ page DRHP prospectuses. However, studying these manually was extremely time-consuming. 
-                                This drove us to use our background in <strong>CSE AI & ML</strong> to build <strong>StockTraQ</strong>—an Intelligence ecosystem designed to extract meaningful market insights securely.
-                            </p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Background: B.Tech CSE (AI & ML), VNRVJIET</p>
-                        </div>
-                        <div className="pt-4 border-t border-gray-100 dark:border-dark-border space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Meet Our Team</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {[
-                                    { name: 'Urlana Suresh Kumar', links: { linkedin: '#', github: '#', insta: '#' } },
-                                    { name: 'Thadakmadla Ramana', links: { linkedin: '#', github: '#', insta: '#' } },
-                                    { name: 'Damarla Sai Sampreeth', links: { linkedin: '#', github: '#', insta: '#' } },
-                                    { name: 'Kuna SaiTeja', links: { linkedin: '#', github: '#', insta: '#' } },
-                                ].map((m, i) => (
-                                    <div key={i} className="p-4 bg-gray-50 dark:bg-dark-card rounded-xl border border-gray-100 dark:border-dark-border flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-black text-gray-900 dark:text-white">{m.name}</p>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">VNRVJIET</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <a href={m.links.linkedin} className="p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg text-gray-400 hover:text-primary-600 transition-colors"><Linkedin className="w-4 h-4" /></a>
-                                            <a href={m.links.github} className="p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg text-gray-400 hover:text-primary-600 transition-colors"><Github className="w-4 h-4" /></a>
-                                            <a href={m.links.insta} className="p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg text-gray-400 hover:text-primary-600 transition-colors"><Instagram className="w-4 h-4" /></a>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <button onClick={() => setShowTeamModal(false)} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase tracking-widest rounded-xl transition-colors shadow-lg shadow-primary-500/20 text-sm">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
+            <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
         </footer>
+
 
     );
 };

@@ -1,4 +1,9 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { NODE_API } from '../config';
+import { WaitlistModal } from '../components/WaitlistModal';
+import { SubmitIdeaModal } from '../components/SubmitIdeaModal';
+
 import {
     TrendingUp,
     Eye,
@@ -122,6 +127,25 @@ export const Roadmap = () => {
     ];
 
     const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(null);
+    const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+    const [showSubmitIdeaModal, setShowSubmitIdeaModal] = useState(false);
+
+    const handleWaitlist = async () => {
+        const email = localStorage.getItem('userEmail');
+        const name = localStorage.getItem('userName');
+        
+        if (email && name) {
+            try {
+                await axios.post(`${NODE_API}/api/waitlist`, { name, email });
+                alert('You have been added to the waitlist successfully!');
+            } catch (err) {
+                alert(err.response?.data?.error || 'Failed to join waitlist. Please try again.');
+            }
+        } else {
+            setShowWaitlistModal(true);
+        }
+    };
+
 
     // X/Y coordinates for the 7 features along the SVG path (0-100 percentages)
     // Trends upwards naturally like a stock chart
@@ -445,9 +469,13 @@ export const Roadmap = () => {
                             <div className="p-8 bg-primary-600 rounded-[2.5rem] text-white shadow-2xl shadow-primary-500/30">
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Early Access</p>
                                 <p className="text-2xl font-black leading-none mb-4">Join the Waitlist</p>
-                                <button className="w-full py-4 bg-white text-primary-600 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform">
+                                <button 
+                                    onClick={handleWaitlist}
+                                    className="w-full py-4 bg-white text-primary-600 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform"
+                                >
                                     Pre-Register
                                 </button>
+
                             </div>
                         </div>
                     </div>
@@ -464,14 +492,22 @@ export const Roadmap = () => {
                         <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-2">Have a Feature Suggestion?</h2>
                         <p className="text-primary-100 font-bold opacity-90">Our roadmap is shaped by the TraQ community. Send us your ideas for the next generation of audit tools.</p>
                     </div>
-                    <button className="px-10 py-5 bg-white text-primary-600 rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-transform flex items-center gap-3">
+                    <button 
+                        onClick={() => setShowSubmitIdeaModal(true)}
+                        className="px-10 py-5 bg-white text-primary-600 rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-transform flex items-center gap-3"
+                    >
                         Submit Audit Idea <ArrowUpRight className="w-5 h-5" />
                     </button>
+
                 </div>
             </div>
+
+            <WaitlistModal isOpen={showWaitlistModal} onClose={() => setShowWaitlistModal(false)} />
+            <SubmitIdeaModal isOpen={showSubmitIdeaModal} onClose={() => setShowSubmitIdeaModal(false)} />
         </div>
     );
 };
+
 
 // Internal Rocket Icon
 const Rocket = ({ className }) => (

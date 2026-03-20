@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { NODE_API } from '../config';
+import { ContactModal } from '../components/ContactModal';
+
 
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, AlertTriangle } from 'lucide-react';
+import { Rocket, Target, Shield, PieChart, Users, ArrowRight, TrendingUp, TrendingDown, Globe, AlertTriangle, MessageSquare } from 'lucide-react';
 
 
 
@@ -23,6 +25,7 @@ const IndexCard = ({ name, value, change, isPositive }) => (
 export const Home = () => {
     const navigate = useNavigate();
     const [faqs, setFaqs] = useState([]);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     const [indices, setIndices] = useState([
         { name: 'Nifty 50', value: 'Loading...', change: '0.00', isPositive: true },
@@ -218,8 +221,40 @@ export const Home = () => {
                 </div>
             </section>
 
+            {/* Meet the Team Section */}
+            <section className="px-4 py-8 relative overflow-hidden">
+                <div className="max-w-4xl mx-auto text-center space-y-4 py-4">
+
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                         The People Behind the Platform
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                         Meet the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-400">Brains</span> Behind StockTraQ
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 font-medium leading-relaxed max-w-2xl mx-auto text-sm">
+                         We are a group of passionate engineers applying AI/ML to democratize financial intelligence and eliminate speculative investment risks. Discover our story and platform milestones.
+                    </p>
+                    <div className="flex justify-center gap-4">
+                        <button 
+                            onClick={() => navigate('/team')}
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-lg shadow-primary-500/20"
+                        >
+                            Meet Our Team <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setShowContactModal(true)}
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-dark-bg text-gray-800 dark:text-white border border-gray-100 dark:border-dark-border font-bold rounded-xl transition-all hover:scale-105 shadow-sm flex items-center justify-center gap-1"
+                        >
+                            Contact Us <MessageSquare className="w-4 h-4 text-primary-600" />
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+
             {/* FAQ Section */}
-            <section className="px-4 py-16">
+
+            <section className="px-4 py-8">
                 <div className="max-w-4xl mx-auto space-y-12">
                      <div className="text-center">
                          <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Frequently Asked Questions</h2>
@@ -263,6 +298,8 @@ export const Home = () => {
                 </div>
             </section>
 
+            <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
         </div>
     );
 };
+

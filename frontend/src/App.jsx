@@ -19,6 +19,8 @@ import { BlogDetail } from './pages/BlogDetail';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Profile } from './pages/Profile';
+import { Team } from './pages/Team';
+
 
 const ProtectedRoute = ({ children }) => {
   const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
@@ -69,8 +71,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/team" element={<Team />} />
 
           <Route path="*" element={<Home />} />
+
 
 
         </Routes>

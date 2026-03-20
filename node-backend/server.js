@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Load environment variables
 dotenv.config();
@@ -21,7 +24,10 @@ const Version = require('./models/Version');
 const User = require('./models/User');
 const Faq = require('./models/Faq');
 const LiveRate = require('./models/LiveRate');
+const Waitlist = require('./models/Waitlist');
+const Idea = require('./models/Idea');
 const bcrypt = require('bcryptjs');
+
 const { mongo } = require('mongoose'); // Just for safety if needed
 
 
@@ -124,6 +130,40 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/google
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ error: 'ID Token is required' });
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Create a default password for Google users
+      user = new User({
+        name,
+        email,
+        password: Math.random().toString(36).slice(-10), // Dummy password
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1d' });
+    res.json({ token, user: { name: user.name, email: user.email } });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ error: 'Google authentication failed', details: error.message });
+  }
+});
+
 // GET /api/me
 app.get('/api/me', authenticateUserToken, async (req, res) => {
   try {
@@ -135,8 +175,35 @@ app.get('/api/me', authenticateUserToken, async (req, res) => {
   }
 });
 
+// POST /api/waitlist
+app.post('/api/waitlist', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const existing = await Waitlist.findOne({ email });
+    if (existing) return res.status(400).json({ error: 'You are already on the waitlist!' });
+
+    const newEntry = new Waitlist({ name, email });
+    await newEntry.save();
+    res.status(201).json({ message: 'Subscribed to Waitlist successfully' });
+  } catch (error) {
+    res.status(400).json({ error: 'Subscription failed', details: error.message });
+  }
+});
+
+// POST /api/ideas
+app.post('/api/ideas', async (req, res) => {
+  try {
+    const { name, email, title, description } = req.body;
+    const newIdea = new Idea({ name, email, title, description });
+    await newIdea.save();
+    res.status(201).json({ message: 'Idea submitted successfully' });
+  } catch (error) {
+    res.status(400).json({ error: 'Idea submission failed', details: error.message });
+  }
+});
 
 // POST /admin/add-ipo
+
 app.post('/admin/add-ipo', authenticateToken, async (req, res) => {
   try {
     const newIpo = new Ipo(req.body);

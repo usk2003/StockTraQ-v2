@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { NODE_API } from '../config';
 import { Mail, Lock, User, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 
 export const Signup = () => {
     const navigate = useNavigate();
@@ -25,10 +26,31 @@ export const Signup = () => {
             const res = await axios.post(`${NODE_API}/api/register`, { name, email, password });
             localStorage.setItem('userToken', res.data.token);
             localStorage.setItem('userName', res.data.user.name);
+            localStorage.setItem('userEmail', res.data.user.email);
             navigate(from);
+
             window.location.reload(); // Force navbar refresh
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await axios.post(`${NODE_API}/api/auth/google`, {
+                idToken: credentialResponse.credential
+            });
+            localStorage.setItem('userToken', res.data.token);
+            localStorage.setItem('userName', res.data.user.name);
+            localStorage.setItem('userEmail', res.data.user.email);
+            navigate(from);
+            window.location.reload(); // Force navbar refresh
+        } catch (err) {
+            setError(err.response?.data?.error || 'Google Login failed.');
         } finally {
             setLoading(false);
         }
@@ -119,6 +141,23 @@ export const Signup = () => {
                         </button>
                     </div>
                 </form>
+
+                <div className="relative flex items-center justify-center my-6">
+                    <div className="border-t border-gray-100 dark:border-dark-border w-full"></div>
+                    <div className="absolute bg-white dark:bg-dark-card px-3 text-xs text-gray-400 font-bold uppercase tracking-wider">OR</div>
+                </div>
+
+                <div className="flex justify-center flex-col items-center gap-2">
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Google Login Failed')}
+                        useOneTap
+                        theme="filled_blue"
+                        shape="pill"
+                        size="large"
+                        width="100%"
+                    />
+                </div>
 
                 <div className="mt-8 text-center text-sm font-bold text-gray-500 dark:text-gray-400">
                     Already have an account?{' '}
