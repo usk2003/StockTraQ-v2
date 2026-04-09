@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, TrendingUp, Home, BarChart2, Activity, Search, CheckCircle, Rocket, MessageSquare, Milestone, BookOpen, LayoutDashboard, Database, Plus, FileText, ExternalLink } from 'lucide-react';
+import { Sun, Moon, TrendingUp, Home, BarChart2, Activity, Search, CheckCircle, Rocket, MessageSquare, Milestone, BookOpen, LayoutDashboard, Database, Plus, FileText, ExternalLink, Microscope } from 'lucide-react';
 
 
 export const Navbar = ({ toggleTheme, theme }) => {

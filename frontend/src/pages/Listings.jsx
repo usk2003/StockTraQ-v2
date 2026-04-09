@@ -2,84 +2,167 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginPromptModal } from '../components/LoginPromptModal';
 import axios from 'axios';
-import { NODE_API } from '../config';
-import { Activity, Clock, CheckCircle, Search, TrendingUp, TrendingDown, ArrowRight, ExternalLink, AlertTriangle, BookOpen, AlertCircle, MessageSquare, Bot } from 'lucide-react';
+import { FASTAPI_API } from '../config';
+import { ModelEvaluationDashboard } from '../components/ModelEvaluationDashboard';
+import { Activity, Clock, Rocket, TrendingUp, DollarSign, BarChart, CheckCircle, Info, HelpCircle, X, Search, ArrowRight, ExternalLink, AlertTriangle, BookOpen, AlertCircle, MessageSquare, Bot, Gauge, Microscope } from 'lucide-react';
 
-const API_BASE = `${NODE_API}/api/ipos`;
+const API_BASE = FASTAPI_API;
 
-const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
-    // We map MongoDB schema to UI fallback to old Python format
+const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing, livePrice }) => {
     const name = ipo.companyName || ipo.name;
     const symbol = ipo.symbol;
     const issueSize = ipo.issueSize || ipo.size_cr || ipo.issue_size;
     const priceRange = ipo.priceBand || ipo.price_range || ipo.price;
-    const openDateStr = ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ipo.date;
-    const closeDateStr = ipo.closeDate ? new Date(ipo.closeDate).toLocaleDateString() : ipo.listing_date;
+    const openDateStr = ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ipo.opening_date;
+    const closeDateStr = ipo.closeDate ? new Date(ipo.closeDate).toLocaleDateString() : ipo.date;
     
     // For Python backend fallback
     const gain = ipo.gain || 0;
-    const gainColor = isClosed ? (gain > 0 ? '#10b981' : '#ef4444') : '#f59e0b';
+    const gainColor = gain > 0 ? '#10b981' : '#ef4444';
+
+    // Live Price Calculations
+    const currentPrice = livePrice || ipo.live_price;
+    const formattedCurrentPrice = currentPrice ? Number(currentPrice).toFixed(2) : '-';
     
-    // Fallback details if coming from our node api
-    const details = ipo.details || {
-        QIB: ipo.qib,
-        NII: ipo.nii,
-        Retail: ipo.retail
-    };
+    const issuePriceVal = parseFloat(ipo.price || 0);
+    const formattedIssuePrice = issuePriceVal > 0 ? issuePriceVal.toFixed(2) : priceRange;
+    
+    const listingPriceVal = parseFloat(ipo.actual_listing_price || 0);
+    const formattedListingPrice = listingPriceVal > 0 ? listingPriceVal.toFixed(2) : (isOngoing ? 'TBD' : '-');
+
+    const liveGain = currentPrice && issuePriceVal ? ((currentPrice - issuePriceVal) / issuePriceVal * 100).toFixed(2) : null;
+
+    const details = ipo.details || {};
+    const totalSub = parseFloat(details.total_sub || details.total || 0);
+    const subAmount = (parseFloat(issueSize) || 0) * totalSub;
 
     return (
-        <div className="bg-white dark:bg-dark-card p-5 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors truncate">
+        <div 
+            onClick={() => onAnalyze(ipo)}
+            className="bg-white dark:bg-dark-card p-6 rounded-[2.5rem] border-2 border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:shadow-[0_20px_50px_rgba(16,185,129,0.15)] dark:hover:shadow-[0_20px_50px_rgba(16,185,129,0.3)] hover:border-green-500/30 transition-all duration-500 group flex flex-col h-full relative overflow-hidden cursor-pointer"
+        >
+            {/* Minimal Live Indicator */}
+            {currentPrice && (
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest">Live</span>
+                </div>
+            )}
+
+            <div className="mb-6">
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white transition-colors truncate pr-12">
                         {name}
                     </h3>
-                    <p className="text-[10px] font-mono font-medium text-gray-400">({symbol})</p>
                 </div>
-                {isClosed && (
-                    <div className="text-right ml-2">
-                        <div className="text-lg font-black" style={{ color: gainColor }}>
-                            {gain > 0 ? '+' : ''}{gain}%
+                <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-black text-gray-400 border border-gray-100 dark:border-dark-border px-2 py-0.5 rounded-lg group-hover:border-primary-500/30 transition-colors">
+                        {symbol}
+                    </span>
+                    {ipo.age_days > 0 && (
+                        <span className="text-[10px] font-bold text-gray-400 opacity-60">• {ipo.age_days}d Age</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Price Matrix - Final 2x2 Structure */}
+            <div className="p-4 bg-gray-50/50 dark:bg-dark-bg/50 rounded-3xl mb-6 border border-gray-50 dark:border-dark-border space-y-4">
+                {/* Hero Price: Live Price */}
+                <div className="flex items-center gap-4 border-b border-gray-100 dark:border-dark-border/50 pb-3">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Live Market Price</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl font-black text-gray-900 dark:text-white">₹{formattedCurrentPrice}</span>
+                            {liveGain && (
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${Number(liveGain) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {Number(liveGain) >= 0 ? '+' : ''}{liveGain}%
+                                </span>
+                            )}
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
 
-            <div className="space-y-2 mb-4">
-                <p className="text-[10px] text-gray-500">
-                    {isClosed ? `Close Date: ${closeDateStr}` : `Opens: ${openDateStr}`}
-                </p>
-                <div className="flex justify-between items-center text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                    <span>Size: {issueSize}</span>
-                    <span>{priceRange}</span>
+                <div className="grid grid-cols-2 gap-y-5">
+                    {/* Row 1: Issue Data */}
+                    <div className="border-r border-gray-100 dark:border-dark-border/50 pr-4">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Issue Price</span>
+                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none">₹{formattedIssuePrice}</span>
+                    </div>
+                    <div className="pl-4 text-right">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Issue Size</span>
+                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none">₹{issueSize} Cr</span>
+                    </div>
+                    
+                    {/* Row 2: Listing & Subscription with Sub-values */}
+                    <div className="border-r border-gray-100 dark:border-dark-border/50 pr-4">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Listing Price</span>
+                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none">₹{formattedListingPrice}</span>
+                        {gain !== 0 && !isOngoing && (
+                            <span className={`text-[10px] font-black block mt-2 ${gain > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                {gain > 0 ? '+' : ''}{Number(gain).toFixed(2)}% ROI
+                            </span>
+                        )}
+                    </div>
+                    <div className="pl-4 text-right">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Total Subscribed</span>
+                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none">₹{subAmount > 0 ? subAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'} Cr</span>
+                        {totalSub > 0 && (
+                            <span className={`text-[10px] font-black block mt-2 uppercase tracking-tight ${totalSub >= 5 ? 'text-green-600' : 'text-red-500'}`}>
+                                {totalSub.toFixed(2)}x Multiple
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-4">
+            <div className="grid grid-cols-3 gap-2 mb-6">
                 {Object.entries(details).slice(0, 3).map(([key, val]) => (
-                    <span key={key} className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/10 text-primary-700 dark:text-primary-300 rounded-full text-[9px] font-bold uppercase tracking-wider">
-                        {key}: {val}{typeof val === 'number' && key !== 'pe' ? 'x' : ''}
-                    </span>
+                    <div key={key} className="flex flex-col items-center justify-center py-2 px-1 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-2xl">
+                        <span className="text-[8px] font-black text-gray-400 uppercase mb-0.5">{key}</span>
+                        <span className="text-xs font-black text-gray-700 dark:text-gray-300">
+                            {val}{typeof val === 'number' && !['pe_ratio', 'price', 'total_sub', 'total'].includes(key) ? 'x' : ''}
+                        </span>
+                    </div>
                 ))}
             </div>
 
-            <div className="mt-auto space-y-2">
+            {/* Performance Range Track */}
+            {ipo.actual_52_high > 0 && (
+                <div className="mb-8 px-1">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">52-Week Range</span>
+                        <span className="text-[9px] font-black text-gray-900 dark:text-white">High ₹{ipo.actual_52_high}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-100 dark:bg-dark-bg rounded-full relative overflow-hidden">
+                        <div 
+                            className="absolute inset-y-0 bg-primary-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000"
+                            style={{ 
+                                left: '0%', 
+                                width: `${Math.min(100, ((currentPrice || priceRange) / ipo.actual_52_high) * 100)}%` 
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-auto grid grid-cols-2 gap-3">
                 <button
                     onClick={() => onAnalyze(ipo)}
-                    className="w-full py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-primary-600 dark:hover:bg-primary-500 dark:hover:text-white transition-all transform active:scale-95"
+                    className="py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-600 dark:hover:bg-primary-500 dark:hover:text-white transition-all transform active:scale-95 shadow-lg shadow-gray-200 dark:shadow-none"
                 >
-                    {isClosed ? <TrendingUp className="w-3.5 h-3.5" /> : <Activity className="w-3.5 h-3.5" />}
-                    {isClosed ? 'Re-Analyze' : 'Analyze Now'}
+                    <Activity className="w-3.5 h-3.5" /> Analyze
                 </button>
 
                 <a
                     href={ipo.drhpUrl || "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=3&ssid=15&smid=11"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:text-primary-600 dark:hover:text-primary-400 transition-all border-dashed"
+                    className="py-3.5 bg-gray-50 dark:bg-dark-bg border border-transparent dark:border-dark-border text-gray-900 dark:text-gray-300 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-dark-card transition-all"
                 >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    View DRHP File
+                    <ExternalLink className="w-3.5 h-3.5" /> Details
                 </a>
             </div>
         </div>
@@ -88,13 +171,26 @@ const IPOCard = ({ ipo, isClosed, onAnalyze, isOngoing }) => {
 
 export const Listings = () => {
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('v2');
+    
+    // V3 state (ongoing + closed)
     const [ongoing, setOngoing] = useState([]);
     const [closed, setClosed] = useState([]);
     const [bestListed, setBestListed] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
+    const [v3Filtered, setV3Filtered] = useState([]);
+    const [livePrices, setLivePrices] = useState({});
     const [loading, setLoading] = useState(true);
     const [showLoginModal, setShowLoginModal] = useState(false);
+
+    // V2 state (legacy dataset)
+    const [v2Ipos, setV2Ipos] = useState([]);
+    const [v2Filtered, setV2Filtered] = useState([]);
+    const [v2Search, setV2Search] = useState('');
+    const [v2Sort, setV2Sort] = useState('date_desc');
+    const [v2Limit, setV2Limit] = useState(15);
+    const [v2LivePrices, setV2LivePrices] = useState({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -102,16 +198,30 @@ export const Listings = () => {
                 const ongoingRes = await axios.get(`${API_BASE}/ongoing`).catch(e => ({ data: [] }));
                 const closedRes = await axios.get(`${API_BASE}/closed`).catch(e => ({ data: [] }));
                 
-                const sortedClosed = (closedRes.data || []).sort((a, b) => {
+                const dataOngoing = ongoingRes.data || [];
+                const dataClosed = closedRes.data || [];
+
+                const sortedClosed = dataClosed.sort((a, b) => {
                     const dateA = a.closeDate ? Date.parse(a.closeDate) : 0;
                     const dateB = b.closeDate ? Date.parse(b.closeDate) : 0;
                     return dateB - dateA;
                 });
 
-                setOngoing(ongoingRes.data || []);
+                setOngoing(dataOngoing);
                 setClosed(sortedClosed);
-                // Slice remainder elements ensuring different list contents
                 setBestListed(sortedClosed.slice(6, 12));
+
+                // Batch fetch live prices for visible cards (top 15)
+                const symbolsToFetch = [
+                    ...dataOngoing.map(i => i.symbol),
+                    ...sortedClosed.slice(0, 15).map(i => i.symbol)
+                ].filter(Boolean);
+
+                if (symbolsToFetch.length > 0) {
+                    axios.post(`${API_BASE}/api/ipos/live-prices`, { symbols: symbolsToFetch })
+                        .then(res => setLivePrices(res.data))
+                        .catch(err => console.error('Live price fetch failed', err));
+                }
             } catch (err) {
                 console.error('Fetch failed', err);
             }
@@ -119,6 +229,48 @@ export const Listings = () => {
         };
         fetchData();
     }, []);
+
+    // V2 live price fetch on load and Load More
+    useEffect(() => {
+        if (activeTab !== 'v2' || v2Filtered.length === 0) return;
+        
+        const symbols = v2Filtered.slice(0, v2Limit).map(i => i.symbol).filter(s => s && !v2LivePrices[s]);
+        if (symbols.length > 0) {
+            axios.post(`${API_BASE}/api/ipos/live-prices`, { symbols })
+                .then(r => setV2LivePrices(prev => ({ ...prev, ...r.data })))
+                .catch(err => console.error('V2 Live price fetch failed', err));
+        }
+    }, [activeTab, v2Limit, v2Filtered]);
+
+    useEffect(() => {
+        if (activeTab !== 'v2') return;
+        if (v2Ipos.length > 0) return; // already loaded
+        const fetchV2 = async () => {
+            try {
+                const res = await axios.get(`${API_BASE}/api/ipos1`);
+                const data = (res.data || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+                setV2Ipos(data);
+                setV2Filtered(data);
+            } catch (err) { console.error('V2 fetch failed', err); }
+        };
+        fetchV2();
+    }, [activeTab]);
+
+    // V2 search/sort filter
+    useEffect(() => {
+        let results = [...v2Ipos];
+        if (v2Search.length > 1) {
+            const q = v2Search.toLowerCase();
+            results = results.filter(i => (i.name && i.name.toLowerCase().includes(q)) || (i.symbol && i.symbol.toLowerCase().includes(q)));
+        }
+        if (v2Sort === 'date_desc') results.sort((a, b) => new Date(b.listing_date) - new Date(a.listing_date));
+        else if (v2Sort === 'date_asc') results.sort((a, b) => new Date(a.listing_date) - new Date(b.listing_date));
+        else if (v2Sort === 'gain_desc') results.sort((a, b) => (b.gain || 0) - (a.gain || 0));
+        else if (v2Sort === 'size_desc') results.sort((a, b) => (b.issue_size || 0) - (a.issue_size || 0));
+        else if (v2Sort === 'name_asc') results.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        setV2Filtered(results);
+        setV2Limit(15);
+    }, [v2Search, v2Sort, v2Ipos]);
 
     const handleSearch = async (e) => {
         const q = e.target.value;
@@ -174,9 +326,31 @@ export const Listings = () => {
             bse_code: ipo.bse_code,
             opening_date: ipo.opening_date || (ipo.openDate ? new Date(ipo.openDate).toLocaleDateString() : ''),
             listing_date: ipo.listing_date || (ipo.closeDate ? new Date(ipo.closeDate).toLocaleDateString() : ''),
-            actual_gain: ipo.gain || 0,
+            actual_gain: ipo.gain != null ? ipo.gain : null,
             actual_listing_price: ipo.actual_listing_price || ipo.listingPrice || 0,
-            issue_price: ipo.price || ipo.priceBand || 0
+            issue_price: ipo.price || ipo.priceBand || 0,
+            actual_52_high: ipo.actual_52_high || 0,
+            live_price: livePrices[ipo.symbol]
+        };
+        navigate('/analysis', { state: { params: p } });
+    };
+
+    const onAnalyzeV2 = (ipo) => {
+        const isAuth = localStorage.getItem('userToken') || localStorage.getItem('adminToken');
+        if (!isAuth) { setShowLoginModal(true); return; }
+        const details = ipo.details || {};
+        const p = {
+            ...ipo,
+            qib: details.qib || 0, nii: details.nii || 0, retail: details.retail || 0,
+            total_sub: details.total_sub || 0, pe_ratio: details.pe_ratio || 0,
+            revenue: details.revenue || 0, pat: details.pat || 0, roe: details.roe || 0,
+            roce: details.roce || 0, profit_margin: details.profit_margin || 0,
+            revenue_growth: details.revenue_growth || 15.0,
+            company_name: ipo.name, issue_price: ipo.price, issue_size: ipo.issue_size,
+            actual_gain: ipo.gain != null ? ipo.gain : null,
+            actual_listing_price: ipo.actual_listing_price || 0,
+            actual_52_high: ipo.actual_52_high || 0,
+            live_price: v2LivePrices[ipo.symbol]
         };
         navigate('/analysis', { state: { params: p } });
     };
@@ -203,16 +377,37 @@ export const Listings = () => {
                 </div>
 
                 <div className="hidden md:flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest leading-none">Market Sentiment</p>
-                        <p className="text-lg font-black text-green-500 uppercase mt-1">Bullish</p>
-                    </div>
-                    <div className="w-20 h-2 bg-gray-100 dark:bg-dark-border rounded-full overflow-hidden">
-                        <div className="w-4/5 h-full bg-green-500"></div>
+                    {/* Audit Selection Toggle */}
+                    <div className="flex bg-gray-100 dark:bg-dark-card rounded-2xl p-1 border border-gray-200 dark:border-dark-border">
+                        <button
+                            onClick={() => setActiveTab('v2')}
+                            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'v2' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            Legacy Audit V1
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('v3')}
+                            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'v3' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            Range Audit V2
+                        </button>
                     </div>
                 </div>
             </div>
 
+            {/* Mobile Toggle */}
+            <div className="flex md:hidden bg-gray-100 dark:bg-dark-card rounded-2xl p-1 border border-gray-200 dark:border-dark-border mb-8">
+                <button onClick={() => setActiveTab('v2')}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'v2' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500'}`}
+                >Legacy Audit V1</button>
+                <button onClick={() => setActiveTab('v3')}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'v3' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-500'}`}
+                >Range Audit V2</button>
+            </div>
+
+            {/* ═══════════ V3 TAB: Main IPO Data ═══════════ */}
+            {activeTab === 'v3' && (
+            <>
             {/* Educational Header & Disclaimer */}
             <section className="space-y-6 bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden mb-10">
                 <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
@@ -306,8 +501,8 @@ export const Listings = () => {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {ongoing.map(ipo => (
-                        <IPOCard key={ipo.symbol} ipo={ipo} isClosed={false} isOngoing={true} onAnalyze={onAnalyze} />
+                    {ongoing.map((ipo, idx) => (
+                        <IPOCard key={ipo.symbol || idx} ipo={ipo} onAnalyze={onAnalyze} isOngoing={true} livePrice={livePrices[ipo.symbol]} />
                     ))}
                 </div>
             </section>
@@ -324,8 +519,8 @@ export const Listings = () => {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {closed.slice(0, 6).map(ipo => (
-                        <IPOCard key={ipo.symbol} ipo={ipo} isClosed={true} onAnalyze={onAnalyze} />
+                    {closed.slice(0, 15).map((ipo, idx) => (
+                        <IPOCard key={ipo.symbol || idx} ipo={ipo} isClosed={true} onAnalyze={onAnalyze} livePrice={livePrices[ipo.symbol]} />
                     ))}
                 </div>
             </section>
@@ -420,6 +615,101 @@ export const Listings = () => {
                     </div>
                 </div>
             </section>
+            </>
+            )}
+
+            {/* ═══════════ V1 TAB: Legacy Dataset ═══════════ */}
+            {activeTab === 'v2' && (
+            <>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-900/20">
+                        <CheckCircle className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Legacy Audit V1</h2>
+                        <p className="text-sm text-gray-500 font-medium italic">Historical IPO records (2023-2025) • {v2Filtered.length} entries</p>
+                    </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+                    <div className="relative w-full md:w-72">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <input
+                            type="text" value={v2Search} onChange={(e) => setV2Search(e.target.value)}
+                            placeholder="Search legacy IPOs..."
+                            className="block w-full pl-10 pr-4 py-3 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-2xl shadow-sm focus:ring-4 focus:ring-purple-500/10 transition-all outline-none dark:text-white font-bold text-sm"
+                        />
+                    </div>
+                    <select value={v2Sort} onChange={(e) => setV2Sort(e.target.value)}
+                        className="w-full md:w-44 px-4 py-3 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-2xl shadow-sm outline-none dark:text-white font-bold text-sm cursor-pointer appearance-none"
+                    >
+                        <option value="date_desc">Recent First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="gain_desc">Highest Gain</option>
+                        <option value="size_desc">Largest Size</option>
+                        <option value="name_asc">Alphabetical</option>
+                    </select>
+                </div>
+            </div>
+
+            {v2Filtered.length > 0 ? (
+                <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {v2Filtered.slice(0, v2Limit).map((ipo, idx) => (
+                        <IPOCard key={ipo._id || idx} ipo={ipo} isClosed={true} onAnalyze={onAnalyzeV2} livePrice={v2LivePrices[ipo.symbol]} />
+                    ))}
+                </div>
+                {v2Limit < v2Filtered.length && (
+                    <div className="flex justify-center mt-12">
+                        <button onClick={() => setV2Limit(prev => prev + 15)}
+                            className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-purple-500/20 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
+                        >
+                            <Activity className="w-5 h-5" /> Load More
+                        </button>
+                    </div>
+                )}
+                </>
+            ) : (
+                <div className="py-20 text-center">
+                    <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-bold uppercase tracking-widest">No matching IPOs found</p>
+                </div>
+            )}
+            </>
+            )}
+
+            {/* ═══════════ FOOTER: Research & Model Evaluation ═══════════ */}
+            <div className="pt-20 border-t border-gray-100 dark:border-dark-border">
+                <div className="bg-gradient-to-br from-primary-900 to-purple-900 rounded-[3rem] p-12 text-white relative overflow-hidden group shadow-2xl">
+                    <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                        <Microscope className="w-64 h-64" />
+                    </div>
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+                        <div className="flex-1 space-y-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                                    <Gauge className="w-8 h-8" />
+                                </div>
+                                <h2 className="text-3xl font-black uppercase tracking-tight">AI Research & Audit</h2>
+                            </div>
+                            <p className="text-lg font-medium opacity-80 leading-relaxed max-w-2xl">
+                                To ensure maximum prediction reliability, our ensemble models undergo recurring weight optimization. 
+                                View the statistical justification, algorithm performance history, and range-hit accuracy reports 
+                                formatted for project review.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => navigate('/research')}
+                            className="px-10 py-5 bg-white text-primary-900 rounded-3xl font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10 flex items-center gap-3 whitespace-nowrap"
+                        >
+                            <BarChart className="w-5 h-5" />
+                            View Research Metrics
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} featureName="advanced analysis" />
         </div>

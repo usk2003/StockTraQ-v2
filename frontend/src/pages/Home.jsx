@@ -30,8 +30,8 @@ export const Home = () => {
     const [indices, setIndices] = useState([
         { name: 'Nifty 50', value: 'Loading...', change: '0.00', isPositive: true },
         { name: 'Sensex', value: 'Loading...', change: '0.00', isPositive: true },
-        { name: 'Gold', value: 'Loading...', change: '0.00', isPositive: true },
-        { name: 'Silver', value: 'Loading...', change: '0.00', isPositive: true }
+        { name: 'Gold (1gm)', value: 'Loading...', change: '0.00', isPositive: true },
+        { name: 'Silver (1gm)', value: 'Loading...', change: '0.00', isPositive: true }
     ]);
 
     useEffect(() => {
@@ -40,10 +40,10 @@ export const Home = () => {
                 const res = await axios.get(`${NODE_API}/api/live-rates`);
                 const data = res.data;
                 const newIndices = [
-                    { name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent.replace('%', '') || '0.00', isPositive: data['Nifty 50']?.isPositive ?? true },
-                    { name: 'Sensex', value: data['Sensex']?.value || 'N/A', change: data['Sensex']?.changePercent.replace('%', '') || '0.00', isPositive: data['Sensex']?.isPositive ?? true },
-                    { name: 'Gold', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent.replace('%', '') || '0.00', isPositive: data['Gold']?.isPositive ?? true },
-                    { name: 'Silver', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent.replace('%', '') || '0.00', isPositive: data['Silver']?.isPositive ?? true }
+                    { name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent?.replace('%', '') || '0.00', isPositive: data['Nifty 50']?.isPositive ?? true },
+                    { name: 'Sensex', value: data['Sensex']?.value || 'N/A', change: data['Sensex']?.changePercent?.replace('%', '') || '0.00', isPositive: data['Sensex']?.isPositive ?? true },
+                    { name: 'Gold (1gm)', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent?.replace('%', '') || '0.00', isPositive: data['Gold']?.isPositive ?? true },
+                    { name: 'Silver (1gm)', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent?.replace('%', '') || '0.00', isPositive: data['Silver']?.isPositive ?? true }
                 ];
                 setIndices(newIndices);
             } catch (err) {

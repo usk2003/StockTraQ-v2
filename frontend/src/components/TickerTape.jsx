@@ -18,8 +18,8 @@ export const TickerTape = () => {
                     { type: 'index', name: 'Nifty 50', value: data['Nifty 50']?.value || 'N/A', change: data['Nifty 50']?.changePercent || '0%' },
                     { type: 'index', name: 'Sensex', value: data['Sensex']?.value || 'N/A', change: data['Sensex']?.changePercent || '0%' },
                     { type: 'news', text: 'Market Heat: Over 15 IPOs expected this month.' },
-                    { type: 'index', name: 'Gold', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent || '0%' },
-                    { type: 'index', name: 'Silver', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent || '0%' },
+                    { type: 'index', name: 'Gold (1gm)', value: data['Gold']?.value || 'N/A', change: data['Gold']?.changePercent || '0%' },
+                    { type: 'index', name: 'Silver (1gm)', value: data['Silver']?.value || 'N/A', change: data['Silver']?.changePercent || '0%' },
                     { type: 'news', text: 'Global markets react as US Fed hints at steady interest rates.' }
                 ];
                 setItems(newItems);

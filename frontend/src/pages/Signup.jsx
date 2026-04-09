@@ -2,8 +2,16 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { NODE_API } from '../config';
-import { Mail, Lock, User, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, AlertCircle, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
+
+const SECURITY_QUESTIONS = [
+    "What was the name of your first pet?",
+    "What is your mother's maiden name?",
+    "What was the model of your first car?",
+    "In what city was your high school?",
+    "What is your favorite book?"
+];
 
 export const Signup = () => {
     const navigate = useNavigate();
@@ -13,6 +21,8 @@ export const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [securityQuestion, setSecurityQuestion] = useState('');
+    const [securityAnswer, setSecurityAnswer] = useState('');
 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -23,7 +33,13 @@ export const Signup = () => {
         setError('');
 
         try {
-            const res = await axios.post(`${NODE_API}/api/register`, { name, email, password });
+            const res = await axios.post(`${NODE_API}/api/register`, { 
+                name, 
+                email, 
+                password, 
+                securityQuestion, 
+                securityAnswer 
+            });
             localStorage.setItem('userToken', res.data.token);
             localStorage.setItem('userName', res.data.user.name);
             localStorage.setItem('userEmail', res.data.user.email);
@@ -128,6 +144,38 @@ export const Signup = () => {
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
 
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block tracking-wide text-gray-700 dark:text-gray-300 text-xs font-bold mb-2 uppercase">Security Question</label>
+                        <div className="relative">
+                            <HelpCircle className="absolute left-4 top-3.5 w-5 h-5 text-gray-400 z-10" />
+                            <select
+                                value={securityQuestion}
+                                onChange={(e) => setSecurityQuestion(e.target.value)}
+                                required
+                                className="w-full pl-12 pr-10 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-shadow appearance-none cursor-pointer"
+                            >
+                                <option value="" disabled>Select a security question</option>
+                                {SECURITY_QUESTIONS.map((q, index) => (
+                                    <option key={index} value={q} className="dark:bg-dark-card">{q}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block tracking-wide text-gray-700 dark:text-gray-300 text-xs font-bold mb-2 uppercase">Security Answer</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={securityAnswer}
+                                onChange={(e) => setSecurityAnswer(e.target.value)}
+                                placeholder="Your answer"
+                                required
+                                className="w-full pl-4 pr-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-shadow"
+                            />
                         </div>
                     </div>
 

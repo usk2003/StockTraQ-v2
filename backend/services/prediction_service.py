@@ -256,6 +256,145 @@ class PredictionService:
             'sub_val_label': sub_val_label,
             'sub_val_color': sub_val_color
         }
+    def predict_v3_range(self, ipo_data: dict) -> dict:
+        """
+        V3 Range Prediction: Instead of a single gain prediction, produce a confidence range
+        by leveraging the disagreement between individual ensemble models.
+        
+        Uses model1 (LR, RF, XGBoost) individual predictions + v2 engine prediction
+        to compute a tight min-max range with an adaptive confidence margin.
+        """
+        predictions = []
+        
+        # Source 1: model1 ensemble (LR, RF, XGBoost) - each predicts separately
+        if self.model1 is not None:
+            try:
+                features = pd.DataFrame([[
+                    ipo_data.get('qib', 0),
+                    ipo_data.get('nii', 0),
+                    ipo_data.get('retail', 0),
+                    ipo_data.get('total_sub', 0),
+                    ipo_data.get('issue_size', 0)
+                ]], columns=['QIB', 'NII', 'Retail', 'Total_Subscription', 'Issue_Size'])
+                features_scaled = self.model1['scaler'].transform(features)
+                
+                p_lr = float(self.model1['lr'].predict(features_scaled)[0])
+                p_rf = float(self.model1['rf'].predict(features_scaled)[0])
+                p_xgb = float(self.model1['xgb'].predict(features_scaled)[0])
+                
+                predictions.extend([p_lr, p_rf, p_xgb])
+            except Exception as e:
+                print(f"[V3] Model1 prediction error: {e}")
+
+        # Source 2: v2 engine gain prediction
+        if self.engine_v2:
+            try:
+                df_input = pd.DataFrame([{
+                    'QIB': ipo_data.get('qib', 0),
+                    'Total_Sub': ipo_data.get('total_sub', 0),
+                    'Issue_Size': ipo_data.get('issue_size', 0),
+                    'PE': ipo_data.get('pe_ratio', 0),
+                    'PAT_Margin': ipo_data.get('profit_margin', 0),
+                    'ROE': ipo_data.get('roe', 0),
+                    'Revenue': ipo_data.get('revenue', 0)
+                }])
+                X_scaled = self.engine_v2['scaler'].transform(df_input)
+                p_v2 = float(self.engine_v2['model_gain'].predict(X_scaled)[0])
+                predictions.append(p_v2)
+            except Exception as e:
+                print(f"[V3] V2 engine prediction error: {e}")
+
+        if not predictions:
+            return None
+
+        # Compute range from model disagreement
+        raw_min = min(predictions)
+        raw_max = max(predictions)
+        center = sum(predictions) / len(predictions)
+        spread = raw_max - raw_min
+        
+        # Adaptive margin: smaller for low-volatility predictions, larger for high ones
+        # Base margin is 1% of absolute center value, clamped between 0.5% and 3%
+        base_margin = max(0.5, min(3.0, abs(center) * 0.1))
+        
+        # If models strongly agree (spread < 2%), use a minimum range width
+        if spread < 2.0:
+            base_margin = max(base_margin, 1.0)
+        
+        range_low = round(raw_min - base_margin, 2)
+        range_high = round(raw_max + base_margin, 2)
+        center = round(center, 2)
+        
+        # Confidence: how well do models agree? (0-100%)
+        # Lower spread = higher confidence
+        confidence = round(max(0, min(100, 100 - (spread * 3))), 1)
+        
+        # Calculate Price Range (±10% around predicted price) if issue_price exists
+        price_range_low, price_range_high = None, None
+        issue_price = ipo_data.get('issue_price')
+        if issue_price:
+            predicted_price = issue_price * (1 + center / 100)
+            price_range_low = round(predicted_price * 0.9, 2)
+            price_range_high = round(predicted_price * 1.1, 2)
+
+        # Check if actual gain falls within predicted 10% price range
+        actual_gain = ipo_data.get('actual_gain')
+        hit = None
+        if actual_gain is not None and issue_price:
+            # Calculate actual price if not provided, though we usually compare gains
+            actual_price = issue_price * (1 + actual_gain / 100)
+            hit = price_range_low <= actual_price <= price_range_high
+        elif actual_gain is not None:
+            # Fallback to percentage spread if no issue_price
+            hit = range_low <= actual_gain <= range_high
+        
+        # Individual model predictions for transparency
+        model_predictions = {}
+        idx = 0
+        if self.model1 is not None and idx + 3 <= len(predictions):
+            model_predictions['Linear Regression'] = round(predictions[idx], 2)
+            model_predictions['Random Forest'] = round(predictions[idx + 1], 2)
+            model_predictions['XGBoost'] = round(predictions[idx + 2], 2)
+            idx += 3
+        if self.engine_v2 and idx < len(predictions):
+            model_predictions['V2 Engine'] = round(predictions[idx], 2)
+        
+        # Rating based on center prediction
+        _, rating = self.predict_listing_gain(
+            ipo_data.get('qib', 0), ipo_data.get('nii', 0),
+            ipo_data.get('retail', 0), ipo_data.get('total_sub', 0),
+            ipo_data.get('issue_size', 0)
+        ) if self.model1 else (center, 5)
+        
+        tag_label, tag_color = self.tag_gain(center)
+        rating_label, rating_color = self.get_rating_label(
+            self.calculate_unified_rating(rating, ipo_data.get('total_sub', 0), 0, 
+                self.get_pe_rating(ipo_data.get('pe_ratio', 0)),
+                self.predict_financial_rating(
+                    ipo_data.get('revenue', 0), ipo_data.get('pat', 0),
+                    ipo_data.get('roe', 0), ipo_data.get('roce', 0),
+                    ipo_data.get('profit_margin', 0)
+                )
+            ) if self.model1 and self.model5 else 5.0
+        )
+
+        return {
+            'range_low': range_low,
+            'range_high': range_high,
+            'price_range_low': price_range_low,
+            'price_range_high': price_range_high,
+            'center': center,
+            'spread': round(spread, 2),
+            'confidence': confidence,
+            'hit': hit,
+            'actual_gain': actual_gain,
+            'model_predictions': model_predictions,
+            'tag_label': tag_label,
+            'tag_color': tag_color,
+            'rating_label': rating_label,
+            'rating_color': rating_color,
+            'num_models': len(predictions)
+        }
 
 # Instance for use in routes
 current_dir = os.path.dirname(os.path.abspath(__file__))

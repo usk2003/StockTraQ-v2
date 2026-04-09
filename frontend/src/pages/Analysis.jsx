@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FASTAPI_API } from '../config';
-import { Activity, Rocket, TrendingUp, DollarSign, BarChart, CheckCircle, Info, HelpCircle, X } from 'lucide-react';
+import { Activity, Rocket, TrendingUp, TrendingDown, DollarSign, BarChart, CheckCircle, Info, HelpCircle, X, Upload, Target, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
 
 const API_BASE = `${FASTAPI_API}`;
 
@@ -54,6 +54,194 @@ const HelpModal = ({ isOpen, onClose }) => {
     );
 };
 
+const RhpModal = ({ isOpen, onClose, companyName }) => {
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [sectionFilter, setSectionFilter] = useState('');
+
+    const [uploading, setUploading] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('ipo_name', companyName);
+
+        try {
+            await axios.post(`${API_BASE}/rag/ingest`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setMessages(prev => [...prev, {
+                text: `✅ RHP PDF Ingested for ${companyName}! You can now ask questions about its content.`,
+                sender: 'bot',
+                time: new Date().toLocaleTimeString()
+            }]);
+        } catch (error) {
+            console.error('RHP Ingest Failed', error);
+            setMessages(prev => [...prev, { text: '❌ Failed to ingest RHP. Make sure it is a valid PDF and try again.', sender: 'bot', isError: true }]);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+
+        const userMsg = { text: input, sender: 'user', time: new Date().toLocaleTimeString() };
+        setMessages(prev => [...prev, userMsg]);
+        setInput('');
+        setLoading(true);
+
+        try {
+            const response = await axios.post(`${API_BASE}/rag/query`, {
+                query: input,
+                ipo_name: companyName,
+                section_filter: sectionFilter || undefined
+            });
+
+            const botMsg = {
+                text: response.data.answer,
+                sender: 'bot',
+                time: new Date().toLocaleTimeString(),
+                sources: response.data.sources
+            };
+            setMessages(prev => [...prev, botMsg]);
+        } catch (error) {
+            console.error('RAG Query Failed', error);
+            setMessages(prev => [...prev, { text: 'Sorry, I failed to fetch analysis from the RHP. Please try again.', sender: 'bot', isError: true }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-dark-card w-full max-w-4xl h-[75vh] rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-2xl flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100 dark:border-dark-border flex justify-between items-center bg-gray-50/50 dark:bg-dark-bg/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-2xl">
+                            <Rocket className="w-6 h-6 text-primary-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{companyName} Audit</h2>
+                            <p className="text-[10px] font-bold text-gray-400 tracking-widest">RHP Smart Knowledge Base</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="file"
+                            id="pdfUpload"
+                            className="hidden"
+                            accept="application/pdf"
+                            onChange={handleUpload}
+                        />
+                        <button
+                            onClick={() => document.getElementById('pdfUpload').click()}
+                            disabled={uploading}
+                            className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/10 hover:bg-primary-100 dark:hover:bg-primary-900/30 text-primary-600 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all disabled:opacity-50"
+                        >
+                            <Upload className="w-4 h-4" /> {uploading ? 'INGESTING...' : 'UPLOAD RHP'}
+                        </button>
+                        <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-dark-card rounded-full transition-colors">
+                            <X className="w-6 h-6 text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filters Row */}
+                <div className="px-6 py-3 border-b border-gray-100 dark:border-dark-border bg-gray-100/30 dark:bg-dark-bg/20 flex gap-2 overflow-x-auto text-nowrap">
+                    {['', 'RISK FACTORS', 'BUSINESS OVERVIEW', 'FINANCIAL INFORMATION', 'OBJECTS OF THE ISSUE'].map(sec => (
+                        <button
+                            key={sec}
+                            onClick={() => setSectionFilter(sec)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wider transition-all ${sectionFilter === sec
+                                ? 'bg-primary-600 text-white shadow-lg'
+                                : 'bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:text-gray-300'
+                                }`}
+                        >
+                            {sec || 'ALL SECTIONS'}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Chat Area */}
+                <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                    {messages.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-center opacity-70">
+                            <Info className="w-12 h-12 text-gray-300 mb-3" />
+                            <p className="text-sm font-bold text-gray-400">Ask any question about the {companyName} PDF Prospectus.</p>
+                            <p className="text-xs text-gray-400">e.g., "What are their top revenue sources?"</p>
+                        </div>
+                    )}
+
+                    {messages.map((msg, i) => (
+                        <div key={i} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                            <div className={`p-4 rounded-2xl max-w-lg shadow-sm border ${msg.sender === 'user'
+                                ? 'bg-primary-600 text-white border-transparent rounded-br-none'
+                                : msg.isError ? 'bg-red-50 text-red-600 border-red-100' : 'bg-gray-50 dark:bg-dark-bg/50 dark:text-gray-200 border-gray-100 dark:border-dark-border rounded-bl-none'
+                                }`}>
+                                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+
+                                {/* Sources Display */}
+                                {msg.sources && msg.sources.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-dark-border/50">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Citations</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {msg.sources.map((s, idx) => (
+                                                <span key={idx} className="px-2 py-0.5 bg-gray-100 dark:bg-dark-card rounded-md text-[8px] font-black text-gray-500 hover:bg-primary-50 hover:text-primary-600 cursor-help" title={s.text}>
+                                                    {s.section} (P.{s.page_number})
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1">{msg.time}</span>
+                        </div>
+                    ))}
+
+                    {loading && (
+                        <div className="flex justify-start">
+                            <div className="bg-gray-50 dark:bg-dark-bg/50 p-4 rounded-2xl animate-pulse flex items-center gap-2">
+                                <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Input Area */}
+                <div className="p-6 border-t border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/30 flex gap-4">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSend()}
+                        placeholder="Ask about Risk Factors, Objectives, Financials..."
+                        className="flex-1 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white"
+                        disabled={loading}
+                    />
+                    <button
+                        onClick={handleSend}
+                        disabled={loading || !input.trim()}
+                        className="p-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-lg shadow-primary-500/10 disabled:opacity-50 transition-colors"
+                    >
+                        <TrendingUp className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MetricCard = ({ label, value, subtext, color, icon: Icon, progress }) => (
     <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-xl transition-all duration-300 group">
         <div className="flex justify-between items-start mb-6">
@@ -92,23 +280,27 @@ export const Analysis = () => {
     };
 
     const [params, setParams] = useState({
-        qib: 4.41, nii: 0.80, retail: 1.08, total_sub: 2.81,
-        issue_size: 2833.9, pe_ratio: 65.5, revenue: 2816.0,
-        pat: 12.6, roe: 3.62, roce: 14.40, profit_margin: 17.40,
-        revenue_growth: 26.0
+        qib: 0, nii: 0, retail: 0, total_sub: 0,
+        issue_size: 0, pe_ratio: 0, revenue: 0,
+        pat: 0, roe: 0, roce: 0, profit_margin: 0,
+        revenue_growth: 15.0, live_price: 0,
+        symbol: '', bse_code: '', opening_date: '', listing_date: '',
+        actual_52_high: 0, issue_price: 0, price: 0, company_name: ''
     });
 
     const [results, setResults] = useState(null);
+    const [rangeResults, setRangeResults] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isRhpOpen, setIsRhpOpen] = useState(false);
     const [companyName, setCompanyName] = useState('');
     const [actualGain, setActualGain] = useState(null);
 
     // Update params and auto-trigger analysis when initialParams changes
     useEffect(() => {
         if (initialParams) {
-            setParams(initialParams);
+            setParams(prev => ({ ...prev, ...initialParams }));
             setCompanyName(initialParams.company_name || '');
             setActualGain(initialParams.actual_gain ?? null);
             setResults(null);
@@ -129,12 +321,21 @@ export const Analysis = () => {
                         apiParams[field] = parseFloat(initialParams[field]) || 0;
                     });
                     apiParams.actual_gain = initialParams.actual_gain ?? null;
+                    apiParams.issue_price = parsePrice(initialParams.issue_price || initialParams.price);
+                    apiParams.symbol = initialParams.symbol ? String(initialParams.symbol) : null;
+                    apiParams.bse_code = initialParams.bse_code ? String(initialParams.bse_code) : null;
 
-                    const response = await axios.post(`${API_BASE}/analyze`, apiParams);
+                    const [response, v3Response] = await Promise.all([
+                        axios.post(`${API_BASE}/analyze`, apiParams),
+                        axios.post(`${API_BASE}/analyze-v3`, apiParams).catch(() => null)
+                    ]);
                     setResults(response.data);
+                    if (v3Response?.data) setRangeResults(v3Response.data);
                 } catch (err) {
                     console.error('Auto-analysis failed', err);
-                    setError(err.response?.data?.detail || 'Analysis engine failed to respond. Please try clicking "Analyze Now" manually.');
+                    const detail = err.response?.data?.detail;
+                    const errorMsg = Array.isArray(detail) ? detail.map(d => d.msg).join(', ') : (typeof detail === 'string' ? detail : 'Analysis engine failed to respond. Please try clicking "Analyze Now" manually.');
+                    setError(errorMsg);
                 }
                 setLoading(false);
             };
@@ -157,12 +358,21 @@ export const Analysis = () => {
                 apiParams[field] = parseFloat(params[field]) || 0;
             });
             apiParams.actual_gain = actualGain;
+            apiParams.issue_price = parsePrice(params.issue_price || params.price);
+            apiParams.symbol = params.symbol ? String(params.symbol) : null;
+            apiParams.bse_code = params.bse_code ? String(params.bse_code) : null;
 
-            const response = await axios.post(`${API_BASE}/analyze`, apiParams);
+            const [response, v3Response] = await Promise.all([
+                axios.post(`${API_BASE}/analyze`, apiParams),
+                axios.post(`${API_BASE}/analyze-v3`, apiParams).catch(() => null)
+            ]);
             setResults(response.data);
+            if (v3Response?.data) setRangeResults(v3Response.data);
         } catch (err) {
             console.error('Analysis failed', err);
-            setError(err.response?.data?.detail || 'Handshake with AI engine failed. Check backend connection.');
+            const detail = err.response?.data?.detail;
+            const errorMsg = Array.isArray(detail) ? detail.map(d => d.msg).join(', ') : (typeof detail === 'string' ? detail : 'Handshake with AI engine failed. Check backend connection.');
+            setError(errorMsg);
         }
         setLoading(false);
     };
@@ -176,68 +386,126 @@ export const Analysis = () => {
 
     return (
         /* Added extra top padding (pt-24) to ensure content starts well below the navbar [size: 6rem] */
-        <div className="pt-24 pb-12 px-4 max-w-7xl mx-auto animate-fade-in space-y-12">
+        <div className="pt-12 pb-12 px-4 max-w-7xl mx-auto animate-fade-in space-y-12">
             <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+            <RhpModal isOpen={isRhpOpen} onClose={() => setIsRhpOpen(false)} companyName={companyName} />
 
             {/* Company Header Section */}
             {companyName && (
-                <div className="flex items-center gap-4 animate-slide-up">
-                    <div className="p-4 bg-primary-600 rounded-[1.5rem] shadow-xl shadow-primary-500/20">
-                        <Rocket className="w-10 h-10 text-white" />
-                    </div>
-                    <div className="flex-1 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div>
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none mb-4">
-                                {companyName}
-                            </h1>
+                <div className="animate-slide-up bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-soft">
+                    <div className="flex flex-col lg:flex-row justify-between gap-8">
+                        <div className="flex-1 space-y-8">
+                            {/* Brand & Market IDs */}
+                            <div>
+                                <h1 className="text-4xl md:text-5xl lg:text-7xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none mb-6">
+                                    {companyName}
+                                </h1>
+                                <div className="flex flex-wrap items-center gap-6">
+                                    <div className="flex items-center gap-4 bg-gray-50 dark:bg-dark-bg/50 px-4 py-2 rounded-xl">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">NSE SYMBOL</span>
+                                            <span className="text-sm font-black text-primary-600">{params.symbol || 'N/A'}</span>
+                                        </div>
+                                        <div className="w-px h-8 bg-gray-200 dark:bg-dark-border mx-2"></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">BSE CODE</span>
+                                            <span className="text-sm font-black text-gray-900 dark:text-white">{params.bse_code || 'N/A'}</span>
+                                        </div>
+                                    </div>
 
-                            <div className="flex flex-wrap items-center gap-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">NSE Symbol</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.symbol || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col border-l border-gray-200 dark:border-dark-border pl-4">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">BSE Code</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.bse_code || 'N/A'}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4 border-l border-gray-200 dark:border-dark-border pl-6">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Opening Date</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.opening_date || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col border-l border-gray-200 dark:border-dark-border pl-4">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Listing Date</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white">{params.listing_date || 'N/A'}</span>
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">OPENING</span>
+                                            <span className="text-sm font-serif font-black text-gray-600 dark:text-gray-300">{params.opening_date || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">LISTING</span>
+                                            <span className="text-sm font-serif font-black text-gray-600 dark:text-gray-300">{params.listing_date || 'N/A'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Core IPO Financial Metrics */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-primary-50/50 dark:bg-primary-900/10 rounded-[2rem] border border-primary-100/50 dark:border-primary-500/10">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-primary-600/60 uppercase tracking-widest block">Issue Size</span>
+                                    <span className="text-xl font-black text-gray-900 dark:text-white">₹{params.issue_size || '0'} Cr</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-primary-600/60 uppercase tracking-widest block">Subscription</span>
+                                    <span className="text-xl font-black text-gray-900 dark:text-white">{params.total_sub ? params.total_sub.toFixed(2) + 'x' : 'N/A'}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-primary-600/60 uppercase tracking-widest block">Capital Inflow</span>
+                                    <span className="text-xl font-black text-gray-900 dark:text-white">₹{params.issue_size && params.total_sub ? (params.issue_size * params.total_sub).toLocaleString('en-IN', { maximumFractionDigits: 1 }) : '0'} Cr</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-purple-600/60 uppercase tracking-widest block">52-Week Peak</span>
+                                    <span className="text-xl font-black text-purple-600">
+                                        {params.actual_52_high > 0 ? `₹${params.actual_52_high}` : 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setIsRhpOpen(true)}
+                                    className="px-8 py-3 bg-primary-600 hover:bg-primary-700 text-white font-black rounded-2xl flex items-center gap-2 shadow-xl shadow-primary-500/25 transition-all text-sm uppercase tracking-wider group"
+                                >
+                                    <Rocket className="w-5 h-5 group-hover:animate-bounce" /> Analyze RHP
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col items-end text-right min-w-[150px]">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Listing Audit Price</p>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-3xl md:text-4xl font-black text-primary-600">
-                                        ₹{params.issue_price || params.price}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Issue Price</span>
-                                </div>
-                                {results?.live_price && (
-                                    <div className="mt-4 flex flex-col items-end pt-4 border-t border-gray-100 dark:border-dark-border">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                                            <span className="text-2xl md:text-3xl font-black text-green-500 animate-pulse">
-                                                ₹{results.live_price.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                            Live Price ({results.live_source})
+                        {/* Price & Live Status dashboard */}
+                        <div className="lg:w-80 flex flex-col justify-between items-end border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-dark-border pt-8 lg:pt-0 lg:pl-8">
+                            <div className="w-full space-y-6">
+                                <div className="flex justify-between items-end lg:flex-col lg:items-end gap-2">
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Entry Audit Price</p>
+                                        <span className="text-4xl font-black text-gray-900 dark:text-white">
+                                            ₹{params.issue_price || params.price || '0'}
                                         </span>
                                     </div>
-                                )}
+                                    <div className="px-3 py-1 bg-gray-100 dark:bg-dark-bg rounded-lg text-[10px] font-black text-gray-500 uppercase">
+                                        Issue Price
+                                    </div>
+                                </div>
+
+                                <div className="w-full bg-gray-50 dark:bg-dark-bg/50 p-6 rounded-[2rem] border-2 border-transparent hover:border-green-500/30 transition-all group">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Market Live Update</span>
+                                        <div className={`w-2 h-2 rounded-full ${(results?.live_price || params.live_price) ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+                                    </div>
+                                    
+                                    {(results?.live_price || params.live_price) ? (
+                                        <div className="space-y-2">
+                                            <span className="text-4xl font-black text-green-500 block leading-none">
+                                                ₹{Number(results?.live_price || params.live_price).toFixed(2)}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {params.issue_price > 0 && (
+                                                    <span className={`text-sm font-black px-2 py-0.5 rounded-md ${((Number(results?.live_price || params.live_price) - params.issue_price) / params.issue_price) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {(((results?.live_price || params.live_price) - params.issue_price) / params.issue_price * 100).toFixed(2)}%
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] font-black text-gray-400 uppercase">ROI vs ISSUE</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 animate-pulse">
+                                            <div className="h-8 bg-gray-200 dark:bg-dark-border rounded-lg w-3/4"></div>
+                                            <span className="text-[10px] font-black text-gray-400 uppercase">Attempting exchange ping...</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-dark-border">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase block tracking-widest">
+                                            Source: {results?.live_source || 'Terminal (NSE/BSE)'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -375,7 +643,8 @@ export const Analysis = () => {
                         </div>
                     </div>
 
-                    {/* Backtest Analysis Card - Only shown if actualGain exists */}
+                    {/* Backtest Analysis Card - HIDDEN AS PER USER REQUEST */}
+                    {/*
                     {actualGain !== null && (
                         <div className="bg-white dark:bg-dark-card rounded-[3rem] border-4 border-dashed border-primary-500/20 p-12 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform">
@@ -456,6 +725,7 @@ export const Analysis = () => {
                             </div>
                         </div>
                     )}
+                    */}
 
                     {/* 1. Subscription Total Value - New Horizontal Card */}
                     <div className="bg-white dark:bg-dark-card rounded-[2rem] p-8 border border-gray-100 dark:border-dark-border shadow-2xl relative overflow-hidden group">
@@ -478,6 +748,177 @@ export const Analysis = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* 1.5 V3 Range Prediction Audit - NEW */}
+                    {rangeResults && (
+                        <div className="bg-white dark:bg-dark-card rounded-[2.5rem] p-10 border border-gray-100 dark:border-dark-border shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+                                <Target className="w-64 h-64 text-primary-600" />
+                            </div>
+                            <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-primary-600 to-purple-600"></div>
+
+                            <div className="flex flex-col space-y-8 relative z-10">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                    <div className="flex items-center gap-6">
+                                        <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-[2rem] border border-primary-100 dark:border-primary-800/20">
+                                            <ShieldCheck className="w-10 h-10 text-primary-600" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <h3 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">V3 Range Audit</h3>
+                                                <span className="px-3 py-1 bg-primary-600 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-primary-500/20">Elite AI</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 font-bold uppercase tracking-widest opacity-70">Confidence-Based Ensemble Prediction</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-6 bg-gray-50 dark:bg-dark-bg/50 px-8 py-4 rounded-3xl border border-gray-100 dark:border-dark-border">
+                                        <div className="text-center">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">AI Confidence</p>
+                                            <p className="text-2xl font-black text-primary-600">{rangeResults.confidence}%</p>
+                                        </div>
+                                        <div className="w-[1px] h-10 bg-gray-200 dark:bg-dark-border"></div>
+                                        <div className="text-center">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Model Agreement</p>
+                                            <p className="text-2xl font-black text-purple-600">{rangeResults.num_models} Models</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-4">
+                                    <div className="space-y-8">
+                                        <div className="p-8 bg-gradient-to-br from-primary-600 to-purple-700 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                                <Zap className="w-32 h-32" />
+                                            </div>
+                                            <p className="text-xs font-black uppercase tracking-widest opacity-80 mb-4">Predicted Listing Range</p>
+                                            <div className="flex items-baseline gap-4">
+                                                {rangeResults.price_range_low ? (
+                                                    <>
+                                                        <span className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter">
+                                                            ₹{rangeResults.price_range_low.toFixed(1)}
+                                                        </span>
+                                                        <span className="text-2xl font-black opacity-50">to</span>
+                                                        <span className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter">
+                                                            ₹{rangeResults.price_range_high.toFixed(1)}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-6xl font-black tracking-tighter">
+                                                            {rangeResults.range_low > 0 ? '+' : ''}{rangeResults.range_low}%
+                                                        </span>
+                                                        <span className="text-3xl font-black opacity-50">to</span>
+                                                        <span className="text-6xl font-black tracking-tighter">
+                                                            {rangeResults.range_high > 0 ? '+' : ''}{rangeResults.range_high}%
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className="mt-2 text-[10px] font-black uppercase tracking-widest opacity-60">
+                                                Estimated {rangeResults.range_low}% to {rangeResults.range_high}% bracket
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap justify-between items-center gap-4">
+                                                <div className="flex gap-2">
+                                                    <span className="px-2 py-1 bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md">LR (0.2)</span>
+                                                    <span className="px-2 py-1 bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md">RF (0.4)</span>
+                                                    <span className="px-2 py-1 bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md">XGB (0.4)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
+                                                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Ensemble V2 Engine</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Individual Model Spread */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            {rangeResults.model_predictions && Object.entries(rangeResults.model_predictions).map(([name, val]) => (
+                                                <div key={name} className="p-4 bg-white dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-[1.5rem] text-center hover:border-primary-500/30 transition-colors group/m">
+                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter mb-1 truncate">{name}</p>
+                                                    <p className="text-sm font-black text-gray-900 dark:text-white group-hover/m:text-primary-600 transition-colors">
+                                                        {val > 0 ? '+' : ''}{val}%
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col justify-center space-y-10 px-4">
+                                        {actualGain !== null ? (
+                                            <div className="space-y-8">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex gap-10">
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Actual Listing</p>
+                                                            <h4 className="text-3xl font-black text-gray-900 dark:text-white">
+                                                                {actualGain > 0 ? '+' : ''}{actualGain}%
+                                                            </h4>
+                                                        </div>
+                                                        {rangeResults.price_range_low && (
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Actual Price</p>
+                                                                <h4 className="text-3xl font-black text-primary-600">
+                                                                    ₹{(parsePrice(params.issue_price || params.price) * (1 + actualGain / 100)).toFixed(1)}
+                                                                </h4>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className={`px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3 shadow-xl ${rangeResults.hit ? 'bg-green-100 text-green-700 shadow-green-500/10' : 'bg-red-100 text-red-700 shadow-red-500/10'}`}>
+                                                        {rangeResults.hit ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                                                        {rangeResults.hit ? 'Range Hit' : 'Range Miss'}
+                                                    </div>
+                                                </div>
+
+                                                {/* Visual Range Bar with Marker */}
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                        <span>-25%</span>
+                                                        <span>0%</span>
+                                                        <span>+50%</span>
+                                                        <span>+100%</span>
+                                                    </div>
+                                                    <div className="relative h-6 bg-gray-100 dark:bg-dark-bg rounded-full border border-gray-200 dark:border-dark-border overflow-hidden">
+                                                        {/* Predicted Range Backdrop - ±10% band */}
+                                                        <div
+                                                            className="absolute h-full bg-primary-500/20 mix-blend-multiply dark:mix-blend-screen transition-all duration-1000"
+                                                            style={{
+                                                                left: `${((rangeResults.center - 10 + 25) / 125) * 100}%`,
+                                                                width: `${(20 / 125) * 100}%`
+                                                            }}
+                                                        >
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent border-x border-primary-500/30"></div>
+                                                        </div>
+
+                                                        {/* Actual Gain Marker */}
+                                                        <div
+                                                            className="absolute top-0 bottom-0 w-1.5 bg-gray-900 dark:bg-white z-20 shadow-[0_0_15px_rgba(0,0,0,0.5)] transition-all duration-1000 ease-out"
+                                                            style={{ left: `${((actualGain + 25) / 125) * 100}%` }}
+                                                        >
+                                                            <div className="absolute -top-1 -left-1.5 w-4.5 h-4.5 -translate-x-[2px]">
+                                                                <div className="w-full h-full bg-gray-900 dark:bg-white rounded-full animate-ping opacity-20"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">
+                                                            Marker shows position of real market debut relative to AI ±10% band
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center p-12 bg-gray-50 dark:bg-dark-bg/30 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-dark-border">
+                                                <Rocket className="w-16 h-16 text-gray-300 mx-auto mb-6 opacity-50" />
+                                                <h4 className="text-xl font-black text-gray-400 uppercase tracking-tight mb-2">Awaiting Listing Data</h4>
+                                                <p className="text-sm text-gray-500 font-medium">Actual performance marker will appear<br />once the IPO lists on the exchange.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 2. Side-by-Side Comparison Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -541,29 +982,29 @@ export const Analysis = () => {
                             />
                             <MetricCard
                                 label="PE Audit"
-                                value={`${Number(results.pe_rating).toFixed(2)}/10`}
-                                subtext={`${params.pe_ratio.toFixed(2)} PE • ${params.pe_ratio < 30 ? "Good Valuation" : "Premium Pricing"}`}
+                                value={`${Number(results.pe_rating || 0).toFixed(2)}/10`}
+                                subtext={`${Number(params.pe_ratio || 0).toFixed(2)} PE • ${(params.pe_ratio || 0) < 30 ? "Good Valuation" : "Premium Pricing"}`}
                                 color="#3b82f6"
                                 icon={BarChart}
-                                progress={results.pe_rating * 10}
+                                progress={(results.pe_rating || 0) * 10}
                             />
                         </div>
                         <div className="space-y-6">
                             <MetricCard
                                 label="Potential Ceiling"
-                                value={`${results.potential_gain.toFixed(1)}%`}
+                                value={`${Number(results.potential_gain || 0).toFixed(1)}%`}
                                 subtext="52-Week High Outlook"
                                 color="#8b5cf6"
                                 icon={TrendingUp}
-                                progress={results.potential_gain}
+                                progress={results.potential_gain || 0}
                             />
                             <MetricCard
                                 label="Fundamental Rating"
-                                value={`${results.fundamental_rating.toFixed(1)}/10`}
+                                value={`${Number(results.fundamental_rating || 0).toFixed(1)}/10`}
                                 subtext="Standardized Health Score"
                                 color="#10b981"
                                 icon={CheckCircle}
-                                progress={results.fundamental_rating * 10}
+                                progress={(results.fundamental_rating || 0) * 10}
                             />
                         </div>
                     </div>

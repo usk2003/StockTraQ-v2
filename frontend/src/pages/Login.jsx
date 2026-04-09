@@ -113,6 +113,9 @@ export const Login = () => {
                             </button>
 
                         </div>
+                        <div className="text-right mt-1">
+                            <Link to="/forgot-password" className="text-xs text-primary-600 hover:underline font-medium">Forgot Password?</Link>
+                        </div>
                     </div>
 
                     <div className="pt-2">

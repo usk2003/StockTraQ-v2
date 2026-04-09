@@ -1,11 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { NODE_API } from '../../config';
-import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil, Search } from 'lucide-react';
+import { NODE_API, FASTAPI_API } from '../../config';
+import { LayoutDashboard, LogOut, CheckCircle, AlertTriangle, Plus, FileText, BarChart3, Users, ChevronRight, Trash2, Database, MessageSquare, Pencil, Search, TrendingUp, Sparkles, ShieldCheck, History, Settings, Globe, Activity } from 'lucide-react';
 
+// Sub-component for managing uploaded DRHP documents
+const DrhpDocsList = () => {
+    const [docs, setDocs] = useState([]);
+    const [deleteLoading, setDeleteLoading] = useState(null);
+
+    const fetchAllDocs = async () => {
+        try {
+            // Fetch ALL docs (including processing/failed) for admin view
+            const res = await axios.get(`${FASTAPI_API}/insight/all-documents`);
+            setDocs(res.data);
+        } catch (err) {
+            console.error('Failed to fetch DRHP docs', err);
+        }
+    };
+
+    useEffect(() => { fetchAllDocs(); }, []);
+
+    const handleDelete = async (doc_id) => {
+        if (!window.confirm('Delete this document? This cannot be undone.')) return;
+        setDeleteLoading(doc_id);
+        try {
+            await axios.delete(`${FASTAPI_API}/insight/documents/${doc_id}`);
+            setDocs(prev => prev.filter(d => d.doc_id !== doc_id));
+        } catch (err) {
+            alert('Failed to delete document.');
+        } finally {
+            setDeleteLoading(null);
+        }
+    };
+
+    if (docs.length === 0) return null;
+
+    const statusColor = (s) => s === 'completed' ? 'text-green-500' : s === 'failed' ? 'text-red-500' : 'text-yellow-500';
+    const statusLabel = (s) => s === 'completed' ? '✓ Completed' : s === 'failed' ? '✗ Failed' : '⟳ Processing';
+
+    return (
+        <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl">
+            <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 border-b border-gray-100 dark:border-dark-border pb-4 flex items-center gap-2">
+                <Database className="w-5 h-5 text-primary-500" /> Manage Uploaded Documents
+            </h2>
+            <div className="space-y-3">
+                {docs.map(doc => (
+                    <div key={doc.doc_id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-bg rounded-xl border border-gray-100 dark:border-dark-border">
+                        <div>
+                            <p className="font-bold text-gray-900 dark:text-white text-sm">{doc.filename}</p>
+                            <p className={`text-xs font-bold mt-1 ${statusColor(doc.status)}`}>{statusLabel(doc.status)}</p>
+                        </div>
+                        <button
+                            onClick={() => handleDelete(doc.doc_id)}
+                            disabled={deleteLoading === doc.doc_id}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {deleteLoading === doc.doc_id
+                                ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                : <Trash2 className="w-4 h-4" />
+                            }
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export const AdminDashboard = () => {
+
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
@@ -16,7 +80,7 @@ export const AdminDashboard = () => {
     const tabParam = queryParams.get('tab');
     
     const [activeTab, setActiveTab] = useState(tabParam || 'overview');
-    const [greeting, setGreeting] = useState('Hi Admin');
+    const [greeting, setGreeting] = useState(`Hi, ${localStorage.getItem('adminName') || 'Admin'}`);
 
     const [ipoData, setIpoData] = useState({
         companyName: '',
@@ -35,7 +99,9 @@ export const AdminDashboard = () => {
         revenue: '',
         pat: '',
         roe: '',
-        roce: ''
+        roce: '',
+        profit_margin: '',
+        growth: ''
     });
 
     const [blogData, setBlogData] = useState({
@@ -59,11 +125,53 @@ export const AdminDashboard = () => {
     const [faqData, setFaqData] = useState({ question: '', answer: '' });
     const [allFaqs, setAllFaqs] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDrhpFile, setSelectedDrhpFile] = useState(null);
+    const [uploadDrhpLoading, setUploadDrhpLoading] = useState(false);
+    const [drhpName, setDrhpName] = useState('');
 
-
-
-
-
+    const handleDrhpSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedDrhpFile) return;
+        
+        setUploadDrhpLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
+        
+        const formData = new FormData();
+        formData.append('custom_name', drhpName || selectedDrhpFile.name);
+        formData.append('file', selectedDrhpFile);
+        
+        try {
+            const uploadRes = await axios.post(`${FASTAPI_API}/insight/upload`, formData);
+            const doc_id = uploadRes.data.doc_id;
+            
+            // Start Polling Loop
+            let isComplete = false;
+            while (!isComplete) {
+                await new Promise(r => setTimeout(r, 4000)); // Poll every 4 seconds
+                const statusRes = await axios.get(`${FASTAPI_API}/insight/status/${doc_id}`);
+                const status = statusRes.data.status;
+                
+                if (status === 'completed') {
+                    isComplete = true;
+                    setSuccessMsg('DRHP Document successfully processed! Data and vectors are ready in Insight TraQ.');
+                    setSelectedDrhpFile(null);
+                    setDrhpName('');
+                } else if (status === 'failed') {
+                    isComplete = true;
+                    const errorDetail = statusRes.data.error || 'Unknown Pipeline Failure';
+                    throw new Error(`Pipeline failed: ${errorDetail}`);
+                }
+            }
+        } catch (err) {
+            const detailError = err.response?.data?.detail;
+            const errorMsg = Array.isArray(detailError) ? JSON.stringify(detailError) : detailError;
+            setErrorMsg(`Err: ${err.message}. Detail: ${errorMsg || 'Upload or processing failed.'}`);
+        } finally {
+            setUploadDrhpLoading(false);
+            window.scrollTo(0, 0);
+        }
+    };
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
         if (!token) {
@@ -133,7 +241,9 @@ export const AdminDashboard = () => {
                 revenue: '',
                 pat: '',
                 roe: '',
-                roce: ''
+                roce: '',
+                profit_margin: '',
+                growth: ''
             });
         } catch (err) {
             setErrorMsg(err.response?.data?.error || 'Failed to add IPO. Check fields and try again.');
@@ -321,58 +431,131 @@ export const AdminDashboard = () => {
     };
 
     const renderAddIpoForm = () => (
-        <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden animate-fade-in">
-            <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-4 flex items-center gap-2">
-                {editingId ? <Pencil className="w-5 h-5 text-yellow-500" /> : <Plus className="w-5 h-5 text-primary-500" />} {editingId ? 'Edit IPO Entry' : 'Create New IPO Entry'}
-            </h2>
+        <div className="space-y-8 animate-fade-in">
+            <div className="bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border-0 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-primary-600"></div>
+                <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 flex items-center gap-3">
+                    {editingId ? <Pencil className="w-6 h-6 text-yellow-500" /> : <Plus className="w-6 h-6 text-primary-500" />} 
+                    {editingId ? 'Edit IPO Entry' : 'Create New IPO Entry'}
+                </h2>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                {[
-                    { label: 'Company Name', name: 'companyName', type: 'text', placeholder: 'e.g. Acme Corp Ltd.' },
-                    { label: 'Symbol / ID', name: 'symbol', type: 'text', placeholder: 'e.g. ACMEC' },
-                    { label: 'Issue Size', name: 'issueSize', type: 'text', placeholder: 'e.g. ₹ 1,500.00 Cr' },
-                    { label: 'Price Band', name: 'priceBand', type: 'text', placeholder: 'e.g. ₹ 90 - ₹ 100' },
-                    { label: 'Open Date', name: 'openDate', type: 'date' },
-                    { label: 'Close Date', name: 'closeDate', type: 'date' },
-                    { label: 'GMP (₹)', name: 'gmp', type: 'number', step: '0.01', placeholder: 'e.g. 25' },
-                    { label: 'QIB Subscription (x)', name: 'qib', type: 'number', step: '0.01', placeholder: 'e.g. 15.5' },
-                    { label: 'NII Subscription (x)', name: 'nii', type: 'number', step: '0.01', placeholder: 'e.g. 5.2' },
-                    { label: 'Retail Subscription (x)', name: 'retail', type: 'number', step: '0.01', placeholder: 'e.g. 2.1' },
-                    { label: 'Listing Price (₹)', name: 'listingPrice', type: 'number', step: '0.01', placeholder: 'e.g. 120 (Fill if Closed)' },
-                    { label: 'Price to Earnings (P/E)', name: 'pe', type: 'number', step: '0.01', placeholder: 'e.g. 25.4' },
-                    { label: 'Revenue (₹ Cr)', name: 'revenue', type: 'number', step: '0.01', placeholder: 'e.g. 500' },
-                    { label: 'PAT (Profit After Tax) (₹ Cr)', name: 'pat', type: 'number', step: '0.01', placeholder: 'e.g. 45' },
-                    { label: 'ROE (%)', name: 'roe', type: 'number', step: '0.01', placeholder: 'e.g. 15.2' },
-                    { label: 'ROCE (%)', name: 'roce', type: 'number', step: '0.01', placeholder: 'e.g. 18.5' },
-                    { label: 'DRHP Link URL', name: 'drhpUrl', type: 'url', placeholder: 'https://sebi.gov.in/...' }
-                ].map((field, idx) => (
-                    <div key={idx} className={field.name === 'drhpUrl' ? 'md:col-span-2' : ''}>
-                        <label className="block tracking-wide text-gray-700 dark:text-gray-300 text-xs font-bold mb-2 uppercase">
-                            {field.label}
-                        </label>
-                        <input
-                            type={field.type}
-                            name={field.name}
-                            value={ipoData[field.name]}
-                            onChange={handleChange}
-                            step={field.step}
-                            placeholder={field.placeholder}
-                            required={!['listingPrice', 'pe', 'revenue', 'pat', 'roe', 'roce'].includes(field.name)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-shadow"
-                        />
+                <form onSubmit={handleSubmit} className="space-y-10">
+                    {/* Section 1: Identity & Timeline */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 border-b border-gray-100 dark:border-dark-border pb-3">
+                            <Database className="w-4 h-4 text-gray-400" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Primary Details & Timeline</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Company Legal Name</label>
+                                <input type="text" name="companyName" value={ipoData.companyName} onChange={handleChange} placeholder="e.g. Acme Corp Ltd." required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">NSE Symbol</label>
+                                <input type="text" name="symbol" value={ipoData.symbol} onChange={handleChange} placeholder="e.g. ACME" required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm uppercase" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Opening Date</label>
+                                <input type="date" name="openDate" value={ipoData.openDate} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Closing Date (Listing)</label>
+                                <input type="date" name="closeDate" value={ipoData.closeDate} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Price Band (₹)</label>
+                                <input type="text" name="priceBand" value={ipoData.priceBand} onChange={handleChange} placeholder="e.g. 90-100" required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm" />
+                            </div>
+                            <div className="md:col-span-3">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">DRHP Link (SEBI Official)</label>
+                                <input type="url" name="drhpUrl" value={ipoData.drhpUrl} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-4 focus:ring-primary-500/10 outline-none transition-all font-bold text-sm" />
+                            </div>
+                        </div>
                     </div>
-                ))}
-                
-                <div className="md:col-span-2 mt-4">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-black uppercase tracking-widest rounded-xl transition-colors shadow-lg shadow-primary-500/30 flex justify-center items-center"
-                    >
-                        {loading ? 'Processing...' : editingId ? 'Update IPO Details' : 'Add IPO to Database'}
-                    </button>
-                </div>
-            </form>
+
+                    {/* Section 2: Market Demand & Size */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 border-b border-gray-100 dark:border-dark-border pb-3">
+                            <TrendingUp className="w-4 h-4 text-green-500" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Market Demand & Subscription</h3>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Issue Size (₹ Cr)</label>
+                                <input type="number" step="0.01" name="issueSize" value={ipoData.issueSize} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">GMP (₹)</label>
+                                <input type="number" step="0.01" name="gmp" value={ipoData.gmp} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-green-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">QIB (x)</label>
+                                <input type="number" step="0.01" name="qib" value={ipoData.qib} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">NII (x)</label>
+                                <input type="number" step="0.01" name="nii" value={ipoData.nii} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Retail (x)</label>
+                                <input type="number" step="0.01" name="retail" value={ipoData.retail} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Listing Price (₹)</label>
+                                <input type="number" step="0.01" name="listingPrice" value={ipoData.listingPrice} onChange={handleChange} placeholder="If Closed" className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all font-bold text-sm" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 3: Financials for Prediction Engine */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 border-b border-gray-100 dark:border-dark-border pb-3">
+                            <BarChart3 className="w-4 h-4 text-purple-500" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Prediction Core (Financials)</h3>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">P/E Ratio</label>
+                                <input type="number" step="1" name="pe" value={ipoData.pe} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Revenue (₹ Cr)</label>
+                                <input type="number" step="0.01" name="revenue" value={ipoData.revenue} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">PAT (Profit) (₹ Cr)</label>
+                                <input type="number" step="0.01" name="pat" value={ipoData.pat} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Profit Margin (%)</label>
+                                <input type="number" step="0.01" name="profit_margin" value={ipoData.profit_margin} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">ROE (%)</label>
+                                <input type="number" step="0.01" name="roe" value={ipoData.roe} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">ROCE (%)</label>
+                                <input type="number" step="0.01" name="roce" value={ipoData.roce} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Revenue Growth (%)</label>
+                                <input type="number" step="0.01" name="growth" value={ipoData.growth} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50/50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all font-bold text-sm" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-6">
+                        <button type="submit" disabled={loading} className="flex-1 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[1.5rem] font-black uppercase tracking-widest transition-all hover:bg-primary-600 dark:hover:bg-primary-500 dark:hover:text-white shadow-xl shadow-gray-200 dark:shadow-none active:scale-95 disabled:opacity-50">
+                            {loading ? 'Processing...' : editingId ? 'Update IPO Audit' : 'Add IPO Entry'}
+                        </button>
+                        {editingId && (
+                            <button onClick={() => { setEditingId(null); setIpoData({ companyName: '', symbol: '', issueSize: '', priceBand: '', openDate: '', closeDate: '', gmp: '', qib: '', nii: '', retail: '', drhpUrl: '', listingPrice: '', pe: '', revenue: '', pat: '', roe: '', roce: '', profit_margin: '', growth: '' }); }} className="px-8 py-4 bg-gray-100 dark:bg-dark-bg text-gray-500 rounded-[1.5rem] font-bold uppercase tracking-widest text-xs">Cancel</button>
+                        )}
+                    </div>
+                </form>
+            </div>
         </div>
     );
 
@@ -483,6 +666,58 @@ export const AdminDashboard = () => {
             </form>
         </div>
     );
+    const renderAddDrhpForm = () => (
+        <div className="space-y-6 animate-fade-in">
+        <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl relative overflow-hidden">
+            <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8 border-b border-gray-100 dark:border-dark-border pb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary-500" /> Upload DRHP Documents
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+                Upload official SEBI Draft Red Herring Prospectus (DRHP/RHP) PDF files securely. Heavy parsing and AI Insight extraction will take place in the background. Note: 800+ page PDFs could take 2-3 minutes to encode into Vector DBs.
+            </p>
+
+            <form onSubmit={handleDrhpSubmit} className="space-y-6 relative z-10">
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 hover:bg-gray-50 dark:hover:bg-dark-bg transition-colors flex flex-col items-center justify-center">
+                    <input 
+                        type="file" 
+                        accept="application/pdf"
+                        onChange={(e) => setSelectedDrhpFile(e.target.files[0])}
+                        className="mb-4 text-sm text-gray-500 font-medium file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                        required
+                    />
+                    {selectedDrhpFile && <p className="text-sm font-bold text-primary-600">Selected: {selectedDrhpFile.name}</p>}
+                </div>
+                
+                <div className="flex flex-col">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-2">Display Name (Optional)</label>
+                    <input 
+                        type="text" 
+                        value={drhpName}
+                        onChange={(e) => setDrhpName(e.target.value)}
+                        placeholder="e.g. Swiggy Ltd DRHP"
+                        className="px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-shadow"
+                    />
+                </div>
+                
+                <div>
+                    <button
+                        type="submit"
+                        disabled={uploadDrhpLoading || !selectedDrhpFile}
+                        className="w-full py-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-black uppercase tracking-widest rounded-xl transition-colors shadow-lg shadow-primary-500/30 flex justify-center items-center gap-2"
+                    >
+                        {uploadDrhpLoading ? (
+                            <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> AI Analyzing... Please Wait</>
+                        ) : 'Process Document & Extract Insights'}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {/* Manage Existing DRHP Docs */}
+        <DrhpDocsList />
+        </div>
+    );
+
 
 
 
@@ -517,61 +752,90 @@ export const AdminDashboard = () => {
                     />
                 </div>
             {/* Manage IPOs */}
-            <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl">
-                <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-4">
-                    <BarChart3 className="w-5 h-5 text-primary-500" /> Manage IPO Listings
-                </h2>
+            <div className="bg-white dark:bg-dark-card p-10 rounded-[2.5rem] border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
+                <div className="flex justify-between items-center mb-10 pb-6 border-b border-gray-100 dark:border-dark-border">
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <Globe className="w-6 h-6 text-primary-500" /> IPO Inventory
+                    </h2>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{filteredIpos.length} total entries</span>
+                </div>
+                
                 {filteredIpos.length === 0 ? (
-                    <p className="text-center text-gray-500 font-medium py-8">No IPOs found matching search.</p>
+                    <div className="text-center py-20 bg-gray-50 dark:bg-dark-bg/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-dark-border">
+                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Zero Matches in Sector Analysis</p>
+                    </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-separate border-spacing-y-4">
                             <thead>
-                                <tr className="border-b border-gray-100 dark:border-dark-border text-xs uppercase text-gray-400 font-bold">
-                                    <th className="pb-3 pr-4">Company</th>
-                                    <th className="pb-3 pr-4">Symbol</th>
-                                    <th className="pb-3 pr-4">GMP</th>
-                                    <th className="pb-3 text-right">Actions</th>
+                                <tr className="text-[10px] uppercase text-gray-400 font-black tracking-widest">
+                                    <th className="px-6 pb-2">Venture</th>
+                                    <th className="px-6 pb-2">Status</th>
+                                    <th className="px-6 pb-2">GMP Alpha</th>
+                                    <th className="px-6 pb-2 text-right">Management</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-dark-border">
-                                {filteredIpos.slice(0, 6).map(ipo => (
-                                    <tr key={ipo._id} className="text-sm">
-                                        <td className="py-4 font-bold text-gray-900 dark:text-white">{ipo.companyName}</td>
-                                        <td className="py-4 text-gray-500">{ipo.symbol}</td>
-                                        <td className="py-4 text-green-600 font-bold">₹{ipo.gmp || '0'}</td>
-                                        <td className="py-4 text-right flex items-center justify-end gap-2">
-                                            <button 
-                                                onClick={() => {
-                                                    setIpoData({
-                                                        companyName: ipo.companyName || '',
-                                                        symbol: ipo.symbol || '',
-                                                        issueSize: ipo.issueSize || '',
-                                                        priceBand: ipo.priceBand || '',
-                                                        openDate: ipo.openDate ? new Date(ipo.openDate).toISOString().split('T')[0] : '',
-                                                        closeDate: ipo.closeDate ? new Date(ipo.closeDate).toISOString().split('T')[0] : '',
-                                                        gmp: ipo.gmp || '',
-                                                        qib: ipo.qib || '',
-                                                        nii: ipo.nii || '',
-                                                        retail: ipo.retail || '',
-                                                        drhpUrl: ipo.drhpUrl || '',
-                                                        listingPrice: ipo.listingPrice || '',
-                                                        pe: ipo.pe || '',
-                                                        revenue: ipo.revenue || '',
-                                                        pat: ipo.pat || '',
-                                                        roe: ipo.roe || '',
-                                                        roce: ipo.roce || ''
-                                                    });
-                                                    setEditingId(ipo._id);
-                                                    setActiveTab('add_ipo');
-                                                }} 
-                                                className="p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-lg transition-colors"
-                                            >
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleDeleteIpo(ipo._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                            <tbody>
+                                {filteredIpos.slice(0, 8).map(ipo => (
+                                    <tr key={ipo._id} className="group bg-gray-50/50 dark:bg-dark-bg/50 hover:bg-white dark:hover:bg-dark-card transition-all rounded-2xl">
+                                        <td className="px-6 py-5 first:rounded-l-2xl">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-white dark:bg-dark-bg rounded-xl flex items-center justify-center shadow-sm border border-gray-100 dark:border-dark-border group-hover:scale-110 transition-transform">
+                                                    <span className="text-[10px] font-black text-primary-600">{ipo.symbol?.slice(0, 3)}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-sm text-gray-900 dark:text-white group-hover:text-primary-600 transition-colors uppercase tracking-tight">{ipo.companyName}</p>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{ipo.symbol}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${ipo.closeDate && new Date(ipo.closeDate) < new Date() ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'}`}>
+                                                {ipo.closeDate && new Date(ipo.closeDate) < new Date() ? 'Archive' : 'Active'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <TrendingUp className="w-3 h-3 text-green-500" />
+                                                <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight">₹{ipo.gmp || '0'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right last:rounded-r-2xl">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => {
+                                                        setIpoData({
+                                                            companyName: ipo.companyName || '',
+                                                            symbol: ipo.symbol || '',
+                                                            issueSize: ipo.issueSize || '',
+                                                            priceBand: ipo.priceBand || '',
+                                                            openDate: ipo.openDate ? new Date(ipo.openDate).toISOString().split('T')[0] : '',
+                                                            closeDate: ipo.closeDate ? new Date(ipo.closeDate).toISOString().split('T')[0] : '',
+                                                            gmp: ipo.gmp || '',
+                                                            qib: ipo.qib || '',
+                                                            nii: ipo.nii || '',
+                                                            retail: ipo.retail || '',
+                                                            drhpUrl: ipo.drhpUrl || '',
+                                                            listingPrice: ipo.listingPrice || '',
+                                                            pe: ipo.pe || '',
+                                                            revenue: ipo.revenue || '',
+                                                            pat: ipo.pat || '',
+                                                            roe: ipo.roe || '',
+                                                            roce: ipo.roce || '',
+                                                            profit_margin: ipo.profit_margin || '',
+                                                            growth: ipo.growth || ''
+                                                        });
+                                                        setEditingId(ipo._id);
+                                                        setActiveTab('add_ipo');
+                                                    }}
+                                                    className="p-2.5 bg-white dark:bg-dark-bg text-primary-600 hover:bg-primary-600 hover:text-white rounded-xl shadow-sm border border-gray-100 dark:border-dark-border transition-all"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => handleDeleteIpo(ipo._id)} className="p-2.5 bg-white dark:bg-dark-bg text-red-500 hover:bg-red-600 hover:text-white rounded-xl shadow-sm border border-gray-100 dark:border-dark-border transition-all">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -701,33 +965,55 @@ export const AdminDashboard = () => {
     );
 
     const renderOverview = () => (
-        <div className="space-y-8 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-10 animate-fade-in px-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {[
-                    { label: 'Total Users', value: allUsers.length, icon: <Users className="w-6 h-6" /> },
-                    { label: 'Total IPOs', value: allIpos.length, icon: <BarChart3 className="w-6 h-6" /> },
-                    { label: 'Blog Posts', value: allBlogs.length, icon: <FileText className="w-6 h-6" /> }
+                    { label: 'Active Workforce', value: allUsers.length, unit: 'Users', icon: <Users className="w-7 h-7" />, color: 'from-blue-600 to-blue-800' },
+                    { label: 'Live Intelligence', value: allIpos.length, unit: 'Entities', icon: <Database className="w-7 h-7" />, color: 'from-primary-600 to-primary-800' },
+                    { label: 'Knowledge Base', value: allBlogs.length, unit: 'Articles', icon: <FileText className="w-7 h-7" />, color: 'from-purple-600 to-purple-800' }
                 ].map((stat, idx) => (
-                    <div key={idx} className="bg-white dark:bg-dark-card p-6 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl flex items-center justify-between hover:scale-[1.02] transition-transform duration-200 border-t-4 border-t-primary-500">
-                        <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
-                            <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stat.value}</h3>
-                        </div>
-                        <div className="p-4 bg-gray-50 dark:bg-dark-bg rounded-2xl text-primary-600">
-                            {stat.icon}
+                    <div key={idx} className="group relative bg-white dark:bg-dark-card p-8 rounded-[2.5rem] border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:shadow-2xl transition-all h-full overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${stat.color} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">{stat.label}</p>
+                                <div className="flex items-baseline gap-2">
+                                    <h3 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stat.value}</h3>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">{stat.unit}</span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-dark-bg rounded-2xl group-hover:bg-primary-500 group-hover:text-white transition-all text-gray-400">
+                                {stat.icon}
+                            </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="bg-white dark:bg-dark-card p-8 rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl h-[300px] flex items-center justify-center text-center">
-                 <div>
-                      <div className="p-5 bg-green-50 dark:bg-green-900/10 rounded-full inline-flex mb-4">
-                           <CheckCircle className="w-10 h-10 text-green-500" />
-                      </div>
-                      <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase">System Operational</h3>
-                      <p className="text-gray-500 mt-2 text-sm max-w-sm">All backend services, database synchronizations, and live metric streams are online and healthy.</p>
-                 </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white dark:bg-dark-card p-10 rounded-[2.5rem] border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                     <div className="absolute inset-0 bg-gradient-to-br from-primary-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <div className="relative z-10">
+                        <div className="p-6 bg-green-50 dark:bg-green-900/10 rounded-full inline-flex mb-6 animate-pulse">
+                             <ShieldCheck className="w-12 h-12 text-green-500" />
+                        </div>
+                        <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Cluster Healthy</h3>
+                        <p className="text-gray-500 mt-4 text-sm font-medium leading-relaxed max-w-sm">All StockTraQ nodes and predictive engine clusters are synchronized and responsive. Zero critical failures in last 24h.</p>
+                     </div>
+                </div>
+
+                <div className="bg-gray-900 dark:bg-black p-10 rounded-[2.5rem] border-0 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+                        <Sparkles className="w-40 h-40 text-primary-500" />
+                    </div>
+                    <div className="relative z-10">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4">Neural Overview</h3>
+                        <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-xs mb-8">System is processing 42.8k calls per minute with a 0.04% error rate in current unlisted market evaluation loops.</p>
+                        <button className="px-6 py-3 bg-white text-gray-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all shadow-xl shadow-primary-500/20">
+                            Audit Logs
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -793,131 +1079,127 @@ export const AdminDashboard = () => {
     );
 
     const tabs = [
-        { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
-        { id: 'manage_content', label: 'Manage Content', icon: <Database className="w-5 h-5" /> },
-        { id: 'add_ipo', label: 'Add New IPO', icon: <Plus className="w-5 h-5" /> },
-        { id: 'add_blog', label: 'Add New Blog', icon: <FileText className="w-5 h-5" /> },
-        { id: 'add_faq', label: 'Add FAQ', icon: <MessageSquare className="w-5 h-5" /> },
-        { id: 'add_version', label: 'System Versioning', icon: <CheckCircle className="w-5 h-5" /> },
-
-        { id: 'add_drhp', label: 'Add New DRHP File', icon: <FileText className="w-5 h-5" /> },
-
-
-        { id: 'model_perf', label: 'Model Performance', icon: <BarChart3 className="w-5 h-5" /> },
-        { id: 'live_traffic', label: 'Live Traffic', icon: <Users className="w-5 h-5" /> }
+        { id: 'overview', label: 'Monitor', icon: <Activity className="w-3.5 h-3.5" /> },
+        { id: 'live_traffic', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> },
+        { id: 'manage_content', label: 'Database', icon: <Database className="w-3.5 h-3.5" /> },
+        { id: 'add_ipo', label: 'Seed IPO', icon: <Plus className="w-3.5 h-3.5" /> },
+        { id: 'add_blog', label: 'Draft Blog', icon: <FileText className="w-3.5 h-3.5" /> },
+        { id: 'add_faq', label: 'Curate FAQs', icon: <MessageSquare className="w-3.5 h-3.5" /> },
+        { id: 'add_drhp', label: 'Index DRHP', icon: <Globe className="w-3.5 h-3.5" /> },
+        { id: 'model_perf', label: 'AI Health', icon: <Sparkles className="w-3.5 h-3.5 text-purple-500" /> },
+        { id: 'add_version', label: 'Changelog', icon: <History className="w-3.5 h-3.5" /> },
     ];
 
     return (
-        <div className="min-h-screen pt-24 pb-12 px-4 bg-gray-50 dark:bg-dark-bg transition-colors duration-300">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-10">
-                    <div>
-                        <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter flex items-center gap-4">
-                            {greeting} <span className="text-2xl">👋</span>
-                        </h1>
-                        <p className="text-gray-500 font-bold text-sm uppercase tracking-widest mt-2">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    </div>
-                    <button 
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 font-black uppercase tracking-widest text-xs rounded-xl transition-colors shrink-0"
-                    >
-                        <LogOut className="w-4 h-4" /> Logout
-                    </button>
-                </div>
-
-                {successMsg && (
-                    <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-center gap-3 text-green-700 dark:text-green-400 animate-fade-in">
-                        <CheckCircle className="w-6 h-6 shrink-0" />
-                        <span className="font-bold">{successMsg}</span>
-                    </div>
-                )}
-
-                {errorMsg && (
-                    <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3 text-red-600 dark:text-red-400 animate-fade-in">
-                        <AlertTriangle className="w-6 h-6 shrink-0" />
-                        <span className="font-bold">{errorMsg}</span>
-                    </div>
-                )}
-
-
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Sidebar Navigation */}
-                    <div className="w-full lg:w-72 shrink-0">
-                        <div className="bg-white dark:bg-dark-card rounded-[2rem] border border-gray-100 dark:border-dark-border shadow-xl p-4 sticky top-28">
-                            <nav className="space-y-2">
-                                {tabs.map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => {
-                                            setActiveTab(tab.id);
-                                            setEditingId(null);
-                                            // Reset forms to add-mode defaults
-                                            if (tab.id === 'add_ipo') {
-                                                setIpoData({
-                                                    companyName: '', symbol: '', issueSize: '', priceBand: '',
-                                                    openDate: '', closeDate: '', gmp: '', qib: '', nii: '',
-                                                    retail: '', drhpUrl: '', listingPrice: '', pe: '',
-                                                    revenue: '', pat: '', roe: '', roce: ''
-                                                });
-                                            } else if (tab.id === 'add_blog') {
-                                                setBlogData({ title: '', content: '', author: '', summary: '', imageUrl: '', tags: '' });
-                                            } else if (tab.id === 'add_faq') {
-                                                setFaqData({ question: '', answer: '' });
-                                            }
-                                        }}
-                                        className={`w-full flex items-center justify-between p-4 rounded-xl font-bold transition-all ${
-                                            activeTab === tab.id 
-                                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' 
-                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-bg hover:text-primary-600 dark:hover:text-primary-400'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {tab.icon}
-                                            <span className="text-sm uppercase tracking-wide">{tab.label}</span>
-                                        </div>
-                                        {activeTab === tab.id && <ChevronRight className="w-4 h-4" />}
-                                    </button>
-                                ))}
-                            </nav>
-
-                            <div className="mt-8 p-5 bg-gradient-to-br from-gray-900 to-black rounded-2xl text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                                    <LayoutDashboard className="w-16 h-16" />
-                                </div>
-                                <h4 className="font-black uppercase tracking-tight text-sm mb-1 relative z-10">System Status</h4>
-                                <div className="flex items-center gap-2 text-xs font-bold text-green-400 relative z-10">
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                    Database Online
-                                </div>
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg selection:bg-primary-500 selection:text-white transition-colors duration-500">
+            {/* Optimized Command Header */}
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-dark-card/70 backdrop-blur-3xl border-b border-gray-100 dark:border-dark-border h-24 flex items-center px-8">
+                <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
+                    <div className="flex items-center gap-6">
+                        <div className="bg-primary-600 p-2.5 rounded-2xl shadow-xl shadow-primary-500/20">
+                            <ShieldCheck className="w-7 h-7 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none mb-1">
+                                {greeting}
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Cloud Secure</span>
                             </div>
                         </div>
                     </div>
-
-                    {/* Main Content Area */}
-                    <div className="flex-1">
-                        {activeTab === 'overview' && renderOverview()}
-                        {activeTab === 'manage_content' && renderManageContent()}
-                        {activeTab === 'add_ipo' && renderAddIpoForm()}
-                        {activeTab === 'add_blog' && renderAddBlogForm()}
-                        {activeTab === 'add_faq' && renderAddFaqForm()}
-                        {activeTab === 'add_version' && renderAddVersionForm()}
-
-
-
-                        {activeTab === 'add_drhp' && renderPlaceholder(
-                            'Upload DRHP Documents',
-                            <FileText className="w-16 h-16 text-primary-500" />,
-                            'This module allows administrators to securely upload official SEBI Draft Red Herring Prospectus (DRHP) PDF files securely to our robust cloud-storage pipeline independently of the IPO tracking form.'
-                        )}
-                        {activeTab === 'model_perf' && renderPlaceholder(
-                            'AI Evaluation Center',
-                            <BarChart3 className="w-16 h-16 text-purple-500" />,
-                            'A unified telemetry view mapping StockTraQ\'s predictive model lifecycle hooks. Evaluates real-time XGBoost drift detection, hyperparameter metrics, and real-time accuracy against current unlisted active market sentiment.'
-                        )}
-                        {activeTab === 'live_traffic' && renderUsersList()}
-
+                    <div className="flex items-center gap-4">
+                        <div className="hidden md:block text-right">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</p>
+                            <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{new Date().toLocaleDateString('en-US', { weekday: 'long' })}</p>
+                        </div>
+                        <div className="w-[1px] h-8 bg-gray-100 dark:border-dark-border hidden md:block"></div>
+                        <button 
+                            onClick={handleLogout}
+                            className="bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 p-3 rounded-2xl hover:bg-red-600 hover:text-white transition-all transform active:scale-95 shadow-lg shadow-red-500/10"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
+            </header>
+
+            {/* Sticky Horizontal Command Strip */}
+            <div className="fixed top-24 left-0 right-0 z-40 bg-white/50 dark:bg-dark-card/50 backdrop-blur-2xl border-b border-gray-100 dark:border-dark-border">
+                <div className="max-w-7xl mx-auto px-8 overflow-x-auto no-scrollbar">
+                    <nav className="flex items-center gap-3 py-4 min-w-max">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => {
+                                    setActiveTab(tab.id);
+                                    setEditingId(null);
+                                    if (tab.id === 'add_ipo') {
+                                        setIpoData({
+                                            companyName: '', symbol: '', issueSize: '', priceBand: '',
+                                            openDate: '', closeDate: '', gmp: '', qib: '', nii: '',
+                                            retail: '', drhpUrl: '', listingPrice: '', pe: '',
+                                            revenue: '', pat: '', roe: '', roce: '',
+                                            profit_margin: '', growth: ''
+                                        });
+                                    } else if (tab.id === 'add_blog') {
+                                        setBlogData({ title: '', content: '', author: '', summary: '', imageUrl: '', tags: '' });
+                                    } else if (tab.id === 'add_faq') {
+                                        setFaqData({ question: '', answer: '' });
+                                    }
+                                }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all relative overflow-hidden group whitespace-nowrap ${
+                                    activeTab === tab.id 
+                                    ? 'bg-gray-900 text-white shadow-md' 
+                                    : 'text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-dark-bg/20'
+                                }`}
+                            >
+                                <span className={`${activeTab === tab.id ? 'text-primary-400' : 'text-gray-400'} group-hover:scale-110 transition-transform`}>
+                                    {tab.icon}
+                                </span>
+                                <span className="text-[11px] font-black uppercase tracking-widest">{tab.label}</span>
+                            </button>
+                        ))}
+                        
+                    </nav>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto pt-[180px] pb-12 px-6">
+                {/* Main Content Area */}
+                <main className="transition-opacity duration-300">
+                    {successMsg && (
+                        <div className="mb-8 p-5 bg-white/70 dark:bg-dark-card/70 backdrop-blur-xl border-l-[6px] border-green-500 rounded-2xl shadow-xl shadow-green-500/5 flex items-center gap-4 animate-slide-up">
+                            <div className="bg-green-100 p-2 rounded-xl"><CheckCircle className="w-5 h-5 text-green-600" /></div>
+                            <span className="font-black text-sm text-gray-900 dark:text-white uppercase tracking-tight">{successMsg}</span>
+                        </div>
+                    )}
+
+                    {errorMsg && (
+                        <div className="mb-8 p-5 bg-white/70 dark:bg-dark-card/70 backdrop-blur-xl border-l-[6px] border-red-500 rounded-2xl shadow-xl shadow-red-500/5 flex items-center gap-4 animate-slide-up">
+                            <div className="bg-red-100 p-2 rounded-xl"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
+                            <span className="font-black text-sm text-gray-900 dark:text-white uppercase tracking-tight">{errorMsg}</span>
+                        </div>
+                    )}
+
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'manage_content' && renderManageContent()}
+                    {activeTab === 'add_ipo' && renderAddIpoForm()}
+                    {activeTab === 'add_blog' && renderAddBlogForm()}
+                    {activeTab === 'add_faq' && renderAddFaqForm()}
+                    {activeTab === 'add_version' && renderAddVersionForm()}
+                    {activeTab === 'add_drhp' && renderAddDrhpForm()}
+                    {activeTab === 'model_perf' && renderPlaceholder(
+                        'AI Evaluation Center',
+                        <Sparkles className="w-16 h-16 text-purple-500" />,
+                        'Advanced model telemetry is active. Monitoring real-time XGBoost drift detection and hyperparameter lifecycle hooks.'
+                    )}
+                    {activeTab === 'live_traffic' && renderUsersList()}
+                </main>
             </div>
         </div>
     );

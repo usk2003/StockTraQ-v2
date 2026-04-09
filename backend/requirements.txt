@@ -11,3 +11,12 @@ pypdf
 faiss-cpu
 python-multipart
 python-dotenv
+pymupdf
+sentence-transformers
+langchain-text-splitters
+joblib
+numpy
+scikit-learn
+xgboost
+pdfplumber
+google-generativeai

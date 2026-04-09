@@ -12,14 +12,17 @@ import { Roadmap } from './pages/Roadmap';
 import { IpoModel } from './pages/IpoModel';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { Listings1 } from './pages/Listings1';
 import { Privacy } from './pages/Privacy';
 import { Terms } from './pages/Terms';
 import { Blogs } from './pages/Blogs';
 import { BlogDetail } from './pages/BlogDetail';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
+import { ForgotPassword } from './pages/ForgotPassword';
 import { Profile } from './pages/Profile';
 import { Team } from './pages/Team';
+import { Research } from './pages/Research';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -51,14 +54,16 @@ function App() {
         theme={theme}
       />
       <div className="pt-[72px]"> {/* Add padding to prevent overlap with fixed navbar */}
-        <TickerTape />
+        {!location.pathname.startsWith('/admin') && <TickerTape />}
       </div>
 
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/analysis" element={<Analysis />} />
+          <Route path="/research" element={<Research />} />
           <Route path="/ipo" element={<Listings />} />
+          <Route path="/ipo1" element={<Navigate to="/ipo" replace />} />
           <Route path="/ipo-model" element={<IpoModel />} />
           <Route path="/insight" element={<Chatbot />} />
           <Route path="/roadmap" element={<Roadmap />} />
@@ -70,6 +75,7 @@ function App() {
           <Route path="/blogs/:id" element={<BlogDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/team" element={<Team />} />
 

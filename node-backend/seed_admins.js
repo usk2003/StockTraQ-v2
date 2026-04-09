@@ -6,9 +6,9 @@ dotenv.config();
 
 const admins = [
   { name: 'Suresh', username: 'admin_suresh', password: 'stocktraq@6662' },
-  { name: 'Ramana', username: 'admin_ramana', password: 'stocktraq@6656' },
-  { name: 'Saiteja', username: 'admin_saiteja', password: 'stocktraq@6650' },
-  { name: 'Sampreeth', username: 'admin_sampreeth', password: 'stocktraq@6618' }
+  { name: 'Ramana', username: 'admin_ramana', password: 'stocktraq@6663' },
+  { name: 'Saiteja', username: 'admin_saiteja', password: 'stocktraq@6649' },
+  { name: 'Sampreeth', username: 'admin_sampreeth', password: 'stocktraq@6635' }
 ];
 
 const seed = async () => {
@@ -18,22 +18,22 @@ const seed = async () => {
 
     // Drop collection to remove old indexes (like email_1)
     try {
-        await Admin.collection.drop();
-        console.log('Dropped existing admins collection to reset indexes');
+      await Admin.collection.drop();
+      console.log('Dropped existing admins collection to reset indexes');
     } catch (e) {
-        if (e.code === 26) { // NamespaceNotFound
-            console.log('Collection does not exist, skipping drop');
-        } else {
-            throw e;
-        }
+      if (e.code === 26) { // NamespaceNotFound
+        console.log('Collection does not exist, skipping drop');
+      } else {
+        throw e;
+      }
     }
 
     // Insert new
     for (const adminData of admins) {
-        // Create new instance to trigger pre-save password hashing
-        const admin = new Admin(adminData);
-        await admin.save();
-        console.log(`Created admin: ${adminData.name} (${adminData.username})`);
+      // Create new instance to trigger pre-save password hashing
+      const admin = new Admin(adminData);
+      await admin.save();
+      console.log(`Created admin: ${adminData.name} (${adminData.username})`);
     }
 
     console.log('Seeding completed successfully');

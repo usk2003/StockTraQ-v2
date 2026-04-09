@@ -96,13 +96,17 @@ app.post('/admin/login', async (req, res) => {
 // POST /api/register
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, securityQuestion, securityAnswer } = req.body;
     
+    if (!securityQuestion || !securityAnswer) {
+      return res.status(400).json({ error: 'Security question and answer are required' });
+    }
+
     // Check if user exists
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
-    const newUser = new User({ name, email, password });
+    const newUser = new User({ name, email, password, securityQuestion, securityAnswer });
     await newUser.save();
     
     // Create token
@@ -117,7 +121,7 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const isMatch = await user.comparePassword(password);
@@ -125,6 +129,91 @@ app.post('/api/login', async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '1d' });
     res.json({ token, user: { name: user.name, email: user.email } });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/user/security-question
+app.get('/api/user/security-question', async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ securityQuestion: user.securityQuestion });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/forgot-password
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email, securityAnswer } = req.body;
+    if (!email || !securityAnswer) return res.status(400).json({ error: 'Email and answer are required' });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await user.compareSecurityAnswer(securityAnswer);
+    if (!isMatch) return res.status(401).json({ error: 'Incorrect security answer' });
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(20).toString('hex');
+    
+    user.resetPasswordToken = token;
+    user.resetPasswordExpire = Date.now() + 900000; // 15 mins
+    await user.save();
+
+    res.json({ token, message: 'Identity verified. You may now reset your password.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/reset-password
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
+
+    user.password = newPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/change-password
+app.post('/api/change-password', authenticateUserToken, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) return res.status(400).json({ error: 'All fields are required' });
+
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) return res.status(401).json({ error: 'Incorrect current password' });
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -171,6 +260,30 @@ app.get('/api/me', authenticateUserToken, async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/user/investor-profile
+app.put('/api/user/investor-profile', authenticateUserToken, async (req, res) => {
+  try {
+    const { investorProfile } = req.body;
+    if (!investorProfile) return res.status(400).json({ error: 'Investor profile data is required' });
+
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.investorProfile = {
+      ...user.investorProfile,
+      ...investorProfile
+    };
+
+    await user.save();
+    res.json({ message: 'Investor profile updated successfully', investorProfile: user.investorProfile });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Validation failed', details: error.message });
+    }
     res.status(500).json({ error: 'Server error' });
   }
 });

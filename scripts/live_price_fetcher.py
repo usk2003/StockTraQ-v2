@@ -2,46 +2,66 @@ import yfinance as yf
 import sys
 import json
 import argparse
+import os
+
+# Suppress all yfinance logging and progress bars
+os.environ['YF_NO_PRINTOUT'] = '1'
 
 def fetch_live_price(symbol=None, bse_code=None):
     """
     Fetch live price using NSE symbol or BSE scrip code.
-    NSE symbol suffix: .NS
-    BSE code suffix: .BO
+    Uses yf.download for batch performance and reliability.
     """
     price = None
     source = None
     
-    # Try NSE first if symbol provided
-    if symbol:
-        nse_ticker = f"{symbol}.NS"
-        try:
-            ticker = yf.Ticker(nse_ticker)
-            # Use 'regularMarketPrice' or 'currentPrice'
-            info = ticker.info
-            price = info.get('currentPrice') or info.get('regularMarketPrice')
-            if price:
-                source = "NSE"
-                # print(f"[OK] Fetched {symbol} from NSE: ₹{price}")
-                return price, source
-        except Exception as e:
-            # print(f"[WARN] Failed to fetch {symbol} from NSE: {e}")
-            pass
+    # Prepare tickers list
+    tickers = []
+    if symbol: tickers.append(f"{symbol}.NS")
+    if bse_code: tickers.append(f"{bse_code}.BO")
+    
+    if not tickers:
+        return None, None
+    
+    try:
+        # yf.download is significantly more reliable and faster than .info
+        # We use interval='1m' to get the absolute latest minute-level price
+        data = yf.download(tickers, period='1d', interval='1m', progress=False)
+        
+        if data.empty:
+            return None, None
 
-    # Fallback to BSE if code provided or if NSE failed
-    if bse_code:
-        bse_ticker = f"{bse_code}.BO"
-        try:
-            ticker = yf.Ticker(bse_ticker)
-            info = ticker.info
-            price = info.get('currentPrice') or info.get('regularMarketPrice')
+        # Helper to extract latest price safely
+        def get_price(ticker_name):
+            try:
+                # Handle single vs multi-index dataframes
+                if len(tickers) == 1:
+                    val = data['Close'].iloc[-1]
+                else:
+                    val = data['Close'][ticker_name].iloc[-1]
+                
+                import math
+                if val and not math.isnan(val):
+                    return float(val)
+            except:
+                return None
+            return None
+
+        # Try NSE (Prioritize NSE)
+        if symbol:
+            price = get_price(f"{symbol}.NS")
             if price:
-                source = "BSE"
-                # print(f"[OK] Fetched {bse_code} from BSE: ₹{price}")
-                return price, source
-        except Exception as e:
-            # print(f"[WARN] Failed to fetch {bse_code} from BSE: {e}")
-            pass
+                return price, "NSE"
+
+        # Try BSE (Fallback)
+        if bse_code:
+            price = get_price(f"{bse_code}.BO")
+            if price:
+                return price, "BSE"
+
+    except Exception:
+        # Final safety catch to prevent console pollution
+        pass
 
     return None, None
 
@@ -53,8 +73,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.json:
-        p, src = fetch_live_price(args.symbol, args.bse)
-        print(json.dumps({"price": p, "source": src}))
+        # Ensure only the JSON is printed to stdout
+        try:
+            p, src = fetch_live_price(args.symbol, args.bse)
+            print(json.dumps({"price": p, "source": src}))
+        except:
+            print(json.dumps({"price": None, "source": None}))
         sys.exit(0)
 
     # Manual Test cases if no args

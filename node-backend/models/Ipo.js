@@ -18,6 +18,8 @@ const ipoSchema = new mongoose.Schema({
   pat: { type: Number, default: null },
   roe: { type: Number, default: null },
   roce: { type: Number, default: null },
+  profit_margin: { type: Number, default: null },
+  growth: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
